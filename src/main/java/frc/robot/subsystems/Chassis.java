@@ -60,8 +60,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
    * 
    *                                                            kP      kI   kD       kF          Iz   PeakOut
    */
-  private final static GainsBE PID_GAINS_LEFT_STD = new GainsBE(0.135, 0.0, 0.0, 1023.0 / 8000.0, 300, 1.00);
-  private final static GainsBE PID_GAINS_RGT_STD = new GainsBE(0.1225, 0.0, 0.0, 1023.0 / 8350.0, 300, 1.00);
+  private final static GainsBE PID_GAINS_LEFT_STD = new GainsBE(0.135, 0.15, 0.0, 1023.0 / 8000.0, 300, 1.00);
+  private final static GainsBE PID_GAINS_RGT_STD = new GainsBE(0.1225, 0.15, 0.0, 1023.0 / 8350.0, 300, 1.00);
   
   private GainsBE[] _pidGainsLeftLU = new GainsBE[4];
   private GainsBE[] _pidGainsRgtLU = new GainsBE[4];
@@ -168,13 +168,24 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   // Public Helper Methods
   // =====================================================================================
   // basic driving
-  public void arcadeDrive(double throttleCmd, double turnCmd) {
+  public void arcadeDrive(double rawThrottleCmd, double rawTurnCmd) {
 
     double leftAdj = 1.0;
-    double rightAdj = 0.93;   // robot is verring to left (overdriving on right side)
+    double rightAdj = 0.95;   // robot is verring to left (overdriving on right side)
 
-    _leftMaster.set(ControlMode.PercentOutput, (leftAdj * throttleCmd) + (0.3 * turnCmd));
-    _rightMaster.set(ControlMode.PercentOutput, (rightAdj * throttleCmd) - (0.3 * turnCmd));
+    double lowEndPowerFactor = 1.0;
+    double sign = (rawThrottleCmd < 0) ? -1.0 : 1.0;
+
+    // apply some non-linear scaling to the low ranges
+    double adjLeftThrottleCmd = Math.pow(Math.abs(rawThrottleCmd) * leftAdj, lowEndPowerFactor) * sign;
+    double adjRgtThrottleCmd = Math.pow(Math.abs(rawThrottleCmd) * rightAdj, lowEndPowerFactor) * sign;
+
+    // really scale down turn commands
+    double adjLeftTurnCmd = rawTurnCmd * 0.3;
+    double adjRgtTurnCmd = rawTurnCmd * 0.3;
+
+    _leftMaster.set(ControlMode.PercentOutput, adjLeftThrottleCmd + adjLeftTurnCmd);
+    _rightMaster.set(ControlMode.PercentOutput, adjRgtThrottleCmd - adjRgtTurnCmd);
   }
 
   public void zeroSensors()
@@ -245,6 +256,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     talon.config_kP(pidSlotIDX, pidGains.KP, CAN_TIMEOUT_MSECS_INIT);
     talon.config_kI(pidSlotIDX, pidGains.KI, CAN_TIMEOUT_MSECS_INIT);
     talon.config_kD(pidSlotIDX, pidGains.KD, CAN_TIMEOUT_MSECS_INIT);
+
+    talon.configMaxIntegralAccumulator(pidSlotIDX, pidGains.KMaxI, CAN_TIMEOUT_MSECS_INIT);
 
     pidGainsLU[pidSlotIDX] = pidGains;
   }

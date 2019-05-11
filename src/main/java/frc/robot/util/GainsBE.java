@@ -16,16 +16,16 @@ public class GainsBE
 	public final double KI;
 	public final double KD;
 	public final double KF;
-	public final int KIzone;
+	public final int KMaxI;
 	public final double KPeakOutput;
 
-    public GainsBE(double _kP, double _kI, double _kD, double _kF, int _kIzone, double _kPeakOutput)
+    public GainsBE(double _kP, double _kI, double _kD, double _kF, int _kMaxI, double _kPeakOutput)
     {
 		KP = _kP;
 		KI = _kI;
 		KD = _kD;
 		KF = _kF;
-		KIzone = _kIzone;
+		KMaxI = _kMaxI;
 		KPeakOutput = _kPeakOutput;
 	}
 }

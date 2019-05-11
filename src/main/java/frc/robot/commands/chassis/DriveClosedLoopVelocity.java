@@ -68,6 +68,7 @@ public class DriveClosedLoopVelocity extends Command {
   @Override
   protected boolean isFinished() 
   {
+    // exit criteria is elapsed time
     //long currentTimeInMS = System.currentTimeMillis();
     long currentTimeInMS = RobotController.getFPGATime() / 1000;
     long elapsedTimeInMS = currentTimeInMS - _startTimeInMS;
@@ -86,6 +87,7 @@ public class DriveClosedLoopVelocity extends Command {
   protected void end() 
   {
     _chassis.stop(true);
+    
     if(Robot._DataLogger != null)
     {
       Robot._DataLogger.clearMarker();
@@ -97,6 +99,7 @@ public class DriveClosedLoopVelocity extends Command {
   @Override
   protected void interrupted() {
     _chassis.stop(true);
+
     if(Robot._DataLogger != null)
     {
       Robot._DataLogger.clearMarker();

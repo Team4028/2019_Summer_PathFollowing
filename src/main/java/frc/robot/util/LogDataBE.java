@@ -11,12 +11,20 @@ public class LogDataBE {
 	// define class level working variables
 	private List<String> _names;
 	private List<String> _values;
+	private long _currentTimeinMS;
 	
-	public LogDataBE() {
+	public LogDataBE(long currentTimeinMS) {
+		_currentTimeinMS = currentTimeinMS;
+
 		_names = new ArrayList<String>();
 		_values = new ArrayList<String>();
 	}
 		
+	public long get_currentTimeInMS()
+	{
+		return _currentTimeinMS;
+	}
+
 	public void AddData(String name, String value) {
 		_names.add(name);
 		_values.add(value);

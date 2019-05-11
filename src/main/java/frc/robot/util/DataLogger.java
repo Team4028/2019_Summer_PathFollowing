@@ -58,13 +58,13 @@ public class DataLogger {
 		_writer.print("StartDeltaMS" + "\t"
 					 + "LastScanDeltaMS" + "\t" 
 					 + "Marker" + "\t" 
-					 + "MarkerDeltaMS" + "\t" 
+					 + "MarkerElapsedMS" + "\t" 
 					 + textToLog);
         _writer.flush();
         
     	// init these values
 		//_loggingStartedDTMS = System.currentTimeMillis();
-		_loggingStartedDTMS = RobotController.getFPGATime() / 1000;
+		//_loggingStartedDTMS = RobotController.getFPGATime() / 1000;
     }
 
     // Write a structured data object to the log file
@@ -73,19 +73,22 @@ public class DataLogger {
 		// optionally write log header if this is 1st loop
 		if(!_isHeadersWrittenAlready) {
 			WriteHeaderLine(dataToLog.BuildTSVHeader());
+			_loggingStartedDTMS = dataToLog.get_currentTimeInMS();
 			_isHeadersWrittenAlready = true;
 		}
 		
 		// calc elapsed time (in mS) since 1st scan
 		//long startDeltaDiffInMSecs = System.currentTimeMillis() - _loggingStartedDTMS;
-		long startDeltaDiffInMSecs = (RobotController.getFPGATime() / 1000) - _loggingStartedDTMS;
+		//double startDeltaDiffInMSecs = (RobotController.getFPGATime() / 1000) - _loggingStartedDTMS;
+		double startDeltaDiffInMSecs = dataToLog.get_currentTimeInMS() - _loggingStartedDTMS;
 
 		// calc elapsed time (in mS) since last scan (should be 20 mS)
-		long lastScanDeltaDiffInMS = 0;
+		double lastScanDeltaDiffInMS = 0;
 		if (_lastScanDTMS  > 0)
 		{
 			//lastScanDeltaDiffInMS = System.currentTimeMillis() - _lastScanDTMS;
-			lastScanDeltaDiffInMS = (RobotController.getFPGATime() / 1000) - _lastScanDTMS;
+			//lastScanDeltaDiffInMS = (RobotController.getFPGATime() / 1000) - _lastScanDTMS;
+			lastScanDeltaDiffInMS = dataToLog.get_currentTimeInMS() - _lastScanDTMS;
 		}
 		
 		// write out the current data
@@ -93,12 +96,13 @@ public class DataLogger {
 		{
 			// calc elapsed time (in mS) since last marker set
 			//long markerDeltaDiffInMSecs = System.currentTimeMillis() - _markerStartDTMS;
-			long markerDeltaDiffInMSecs = (RobotController.getFPGATime() / 1000) - _markerStartDTMS;
+			//double markerElapsedInMSecs = (RobotController.getFPGATime() / 1000) - _markerStartDTMS;
+			double markerElapsedInMSecs = dataToLog.get_currentTimeInMS()  - _markerStartDTMS;
 
 			_writer.print(startDeltaDiffInMSecs + "\t" 
 							+ lastScanDeltaDiffInMS + "\t" 
 							+ _markerName + "\t" 
-							+ markerDeltaDiffInMSecs + "\t" 
+							+ markerElapsedInMSecs + "\t" 
 							+ dataToLog.BuildTSVData());
 		}
 		else
@@ -114,7 +118,8 @@ public class DataLogger {
 		
 		// save last scan dt so we can calc delta on next scan
 		//_lastScanDTMS = System.currentTimeMillis();
-		_lastScanDTMS = RobotController.getFPGATime() / 1000;
+		//_lastScanDTMS = RobotController.getFPGATime() / 1000;
+		_lastScanDTMS = dataToLog.get_currentTimeInMS();
     }
         
     public void close() {

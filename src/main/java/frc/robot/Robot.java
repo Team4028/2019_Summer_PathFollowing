@@ -17,6 +17,7 @@ import com.ctre.phoenix.motorcontrol.NeutralMode;
 import edu.wpi.first.wpilibj.AnalogGyro;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Notifier;
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.TimedRobot;
 import frc.robot.sensors.GyroNavX;
@@ -278,7 +279,7 @@ public class Robot extends TimedRobot {
     // ============= Refresh Dashboard ============= 
     this.outputAllToDashboard();
 
-    if(!isDisabled()) 
+    if(!isDisabled() && _DataLogger != null)
     {
       // ============= Optionally Log Data =============
       this.logAllData();
@@ -305,8 +306,9 @@ public class Robot extends TimedRobot {
 		// always call this 1st to calc drive metrics
       if(_DataLogger != null) 
       {    	
-	    	// create a new, empty logging class
-        	LogDataBE logData = new LogDataBE();
+        // create a new, empty logging class
+        long currentTimeInMS = RobotController.getFPGATime() / 1000;
+        LogDataBE logData = new LogDataBE(currentTimeInMS);
         
         // ----------------------------------------------
         // ask each subsystem that exists to add its data
