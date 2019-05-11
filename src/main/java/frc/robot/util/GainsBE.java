@@ -8,7 +8,7 @@
 package frc.robot.util;
 
 /**
- * Add your docs here.
+ * This class holds a set of PID Gain constants
  */
 public class GainsBE 
 {

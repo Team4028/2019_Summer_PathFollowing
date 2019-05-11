@@ -35,7 +35,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   private TalonSRX _rightSlave1;
   private TalonSRX _rightSlave2;
 
-  private static final int CAN_TIMEOUT_MSECS_INIT = 10;
+  private static final int CAN_TIMEOUT_MSECS_INIT = 5;
   private static final int CAN_TIMEOUT_MSECS_PERIODIC = 0;
   private static final int BIG_NUMBER = (int) 1e6;
 
@@ -58,10 +58,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
    * loop. kF: 1023 represents output value to Talon at 100%, 9200 represents
    * Velocity units at 100% output
    * 
-   *                                                      kP   kI   kD   kF               Iz   PeakOut
+   *                                                            kP      kI   kD       kF          Iz   PeakOut
    */
-  private final static GainsBE PID_GAINS_STD = new GainsBE(0.2, 0.0, 0.0, 1023.0 / 8000.0, 300, 1.00);
-  private GainsBE[] _pidGainsLU = new GainsBE[4];
+  private final static GainsBE PID_GAINS_LEFT_STD = new GainsBE(0.135, 0.0, 0.0, 1023.0 / 8000.0, 300, 1.00);
+  private final static GainsBE PID_GAINS_RGT_STD = new GainsBE(0.1225, 0.0, 0.0, 1023.0 / 8350.0, 300, 1.00);
+  
+  private GainsBE[] _pidGainsLeftLU = new GainsBE[4];
+  private GainsBE[] _pidGainsRgtLU = new GainsBE[4];
 
   // =====================================================================================
   // Define Singleton Pattern
@@ -77,11 +80,9 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     // =============================================
     // define chassis left side motor controllers
     // =============================================
-    _leftMaster = configDriveMotor(RobotMap.LEFT_DRIVE_MASTER_CAN_ADDR);
+    _leftMaster = configMasterMotor(RobotMap.LEFT_DRIVE_MASTER_CAN_ADDR); // LEFT_DRIVE_MASTER_CAN_ADDR
     _leftSlave1 = configDriveMotor(RobotMap.LEFT_DRIVE_SLAVE1_CAN_ADDR);
     _leftSlave2 = configDriveMotor(RobotMap.LEFT_DRIVE_SLAVE2_CAN_ADDR);
-
-    configMasterMotor(_leftMaster);
 
     _leftMaster.setSensorPhase(false);
 
@@ -92,18 +93,16 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     _leftSlave1.follow(_leftMaster);
     _leftSlave2.follow(_leftMaster);
 
-    setPIDParams(_leftMaster, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_STD);
-    setPIDParams(_leftSlave1, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_STD);
-    setPIDParams(_leftSlave2, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_STD);
+    setPIDParams(_leftMaster, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_LEFT_STD, _pidGainsLeftLU);
+    setPIDParams(_leftSlave1, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_LEFT_STD, _pidGainsLeftLU);
+    setPIDParams(_leftSlave2, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_LEFT_STD, _pidGainsLeftLU);
 
     // =============================================
     // define chassis right side motor controllers
     // =============================================
-    _rightMaster = configDriveMotor(RobotMap.RIGHT_DRIVE_MASTER_CAN_ADDR);
+    _rightMaster = configMasterMotor(RobotMap.RIGHT_DRIVE_MASTER_CAN_ADDR);  // RIGHT_DRIVE_MASTER_CAN_ADDR
     _rightSlave1 = configDriveMotor(RobotMap.RIGHT_DRIVE_SLAVE1_CAN_ADDR);
     _rightSlave2 = configDriveMotor(RobotMap.RIGHT_DRIVE_SLAVE2_CAN_ADDR);
-
-    configMasterMotor(_rightMaster);
 
     _rightMaster.setSensorPhase(false);
 
@@ -114,14 +113,16 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     _rightSlave1.follow(_rightMaster);
     _rightSlave2.follow(_rightMaster);
 
-    setPIDParams(_rightMaster, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_STD);
-    setPIDParams(_rightSlave1, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_STD);
-    setPIDParams(_rightSlave2, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_STD);
+    setPIDParams(_rightMaster, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_RGT_STD, _pidGainsRgtLU);
+    setPIDParams(_rightSlave1, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_RGT_STD, _pidGainsRgtLU);
+    setPIDParams(_rightSlave2, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_RGT_STD, _pidGainsRgtLU);
   }
 
-  private void configMasterMotor(TalonSRX talon) {
-    talon.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, CAN_TIMEOUT_MSECS_INIT);
-    talon.setSelectedSensorPosition(0, 0, CAN_TIMEOUT_MSECS_INIT);
+  private TalonSRX configMasterMotor(int canAddress) {
+
+    TalonSRX driveMotor = configDriveMotor(canAddress);
+    driveMotor.configSelectedFeedbackSensor(FeedbackDevice.CTRE_MagEncoder_Relative, 0, CAN_TIMEOUT_MSECS_INIT);
+    driveMotor.setSelectedSensorPosition(0, 0, CAN_TIMEOUT_MSECS_INIT);
     // talon.configGetParameter(ParamEnum.eSelectedSensorCoefficient, ordinal);
 
     // talon.setStatusFramePeriod(StatusFrame.Status_2_Feedback0, 5,
@@ -130,7 +131,9 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     // CAN_TIMEOUT_MSECS_INIT);
     // talon.configVelocityMeasurementWindow(32, CAN_TIMEOUT_MSECS_INIT);
 
-    talon.configClosedloopRamp(0.0, CAN_TIMEOUT_MSECS_INIT);
+    driveMotor.configClosedloopRamp(0.0, CAN_TIMEOUT_MSECS_INIT);
+
+    return driveMotor;
   }
 
   private TalonSRX configDriveMotor(int canAddress) {
@@ -166,8 +169,12 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   // =====================================================================================
   // basic driving
   public void arcadeDrive(double throttleCmd, double turnCmd) {
-    _leftMaster.set(ControlMode.PercentOutput, throttleCmd + (0.3 * turnCmd));
-    _rightMaster.set(ControlMode.PercentOutput, throttleCmd - (0.3 * turnCmd));
+
+    double leftAdj = 1.0;
+    double rightAdj = 0.93;   // robot is verring to left (overdriving on right side)
+
+    _leftMaster.set(ControlMode.PercentOutput, (leftAdj * throttleCmd) + (0.3 * turnCmd));
+    _rightMaster.set(ControlMode.PercentOutput, (rightAdj * throttleCmd) - (0.3 * turnCmd));
   }
 
   public void zeroSensors()
@@ -191,13 +198,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
 
   public void setBrakeMode(NeutralMode mode)
   {
-    _leftMaster.setNeutralMode(mode);
-    _leftSlave1.setNeutralMode(mode);
-    _leftSlave2.setNeutralMode(mode);
+    if (_leftMaster != null)  _leftMaster.setNeutralMode(mode);
+    if (_leftSlave1 != null)  _leftSlave1.setNeutralMode(mode);
+    if (_leftSlave2 != null)  _leftSlave2.setNeutralMode(mode);
 
-		_rightMaster.setNeutralMode(mode);
-    _rightSlave1.setNeutralMode(mode);
-    _rightSlave2.setNeutralMode(mode);
+		if (_rightMaster != null)  _rightMaster.setNeutralMode(mode);
+    if (_rightSlave1 != null)  _rightSlave1.setNeutralMode(mode);
+    if (_rightSlave2 != null)  _rightSlave2.setNeutralMode(mode);
   }
 
   public void setActivePIDConstantsSlot(int slotIdx)
@@ -232,14 +239,14 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     return nuPer100mS;
   }
 
-  private void setPIDParams(TalonSRX talon, int pidSlotIDX, GainsBE pidGains) {
+  private void setPIDParams(TalonSRX talon, int pidSlotIDX, GainsBE pidGains, GainsBE[] pidGainsLU) {
     // Config the Velocity closed loop gains
     talon.config_kF(pidSlotIDX, pidGains.KF, CAN_TIMEOUT_MSECS_INIT);
     talon.config_kP(pidSlotIDX, pidGains.KP, CAN_TIMEOUT_MSECS_INIT);
     talon.config_kI(pidSlotIDX, pidGains.KI, CAN_TIMEOUT_MSECS_INIT);
     talon.config_kD(pidSlotIDX, pidGains.KD, CAN_TIMEOUT_MSECS_INIT);
 
-    _pidGainsLU[pidSlotIDX] = pidGains;
+    pidGainsLU[pidSlotIDX] = pidGains;
   }
 
   // Postion
@@ -373,33 +380,39 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   @Override
   public void updateLogData(LogDataBE logData) 
   {
-    logData.AddData("Chassis:LeftEncPosInNU", Double.toString(getLeftEncoderPositionInNU()));
-    logData.AddData("Chassis:LeftChasPosInInches", Double.toString(getLeftChassisPositionInInches()));
-    logData.AddData("Chassis:LeftEncVelInNUPer100mS", Double.toString(getLeftEncoderVelocityInNUPer100mS()));
-    logData.AddData("Chassis:LeftChasVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
-    logData.AddData("Chassis:LeftControlMode", _leftMaster.getControlMode().toString());
+    // Left Log Values
     logData.AddData("Chassis:LeftEncClosedLoopTrgt", Double.toString(getLeftEncoderClosedLoopTarget()));
+    logData.AddData("Chassis:LeftEncPosInNU", Double.toString(getLeftEncoderPositionInNU()));
+    logData.AddData("Chassis:LeftEncActualVelInNUPer100mS", Double.toString(getLeftEncoderVelocityInNUPer100mS()));
     logData.AddData("Chassis:LeftEncClosedLoopErr", Double.toString(getLeftEncoderClosedLoopError()));
 
-    GainsBE leftCurrentGains = _pidGainsLU[_activePIDProfileSlotIdx];
-    logData.AddData("Chassis:LeftFFGain", Double.toString(leftCurrentGains.KF));
-    logData.AddData("Chassis:LeftPGain", Double.toString(leftCurrentGains.KP));
-    logData.AddData("Chassis:LeftIGain", Double.toString(leftCurrentGains.KI));
-    logData.AddData("Chassis:LeftDGain", Double.toString(leftCurrentGains.KD));
+    logData.AddData("Chassis:LeftChasPosInInches", Double.toString(getLeftChassisPositionInInches()));
+    logData.AddData("Chassis:LeftChasVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
+    logData.AddData("Chassis:LeftControlMode", _leftMaster.getControlMode().toString());
+    logData.AddData("Chassis:LeftOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
+    GainsBE leftCurrentGains = _pidGainsLeftLU[_activePIDProfileSlotIdx];
+    String leftGains = Double.toString(leftCurrentGains.KF) + " | " + 
+                        Double.toString(leftCurrentGains.KP) + " | " + 
+                        Double.toString(leftCurrentGains.KI) + " | " + 
+                        Double.toString(leftCurrentGains.KD);
+    logData.AddData("Chassis:LeftPIDGains", leftGains);
     
-    logData.AddData("Chassis:RgtEncPosInNU", Double.toString(getRightEncoderPositionInNU()));
-    logData.AddData("Chassis:RgtChasPosInInches", Double.toString(getRightChassisPositionInInches()));
-    logData.AddData("Chassis:RgtEncVelInNUPer100mS", Double.toString(getRightEncoderVelocityInNUPer100mS()));
-    logData.AddData("Chassis:RgtChasVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
-    logData.AddData("Chassis:RgtControlMode", _rightMaster.getControlMode().toString());
+    // Right Log Values
     logData.AddData("Chassis:RgtEncClosedLoopTrgt", Double.toString(getRightEncoderClosedLoopTarget()));
+    logData.AddData("Chassis:RgtEncPosInNU", Double.toString(getRightEncoderPositionInNU()));
+    logData.AddData("Chassis:RgtEncActualVelInNUPer100mS", Double.toString(getRightEncoderVelocityInNUPer100mS()));
     logData.AddData("Chassis:RgtEncClosedLoopErr", Double.toString(getRightEncoderClosedLoopError()));
 
-    GainsBE rightCurrentGains = _pidGainsLU[_activePIDProfileSlotIdx];
-    logData.AddData("Chassis:RgtFFGain", Double.toString(leftCurrentGains.KF));
-    logData.AddData("Chassis:RgtPGain", Double.toString(leftCurrentGains.KP));
-    logData.AddData("Chassis:RgtIGain", Double.toString(leftCurrentGains.KI));
-    logData.AddData("Chassis:RgtDGain", Double.toString(leftCurrentGains.KD));
+    logData.AddData("Chassis:RgtChasPosInInches", Double.toString(getRightChassisPositionInInches()));
+    logData.AddData("Chassis:RgtChasVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
+    logData.AddData("Chassis:RgtControlMode", _rightMaster.getControlMode().toString());
+    logData.AddData("Chassis:RgtOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
+    GainsBE rightCurrentGains = _pidGainsRgtLU[_activePIDProfileSlotIdx];
+    String rightGains = Double.toString(rightCurrentGains.KF) + " | " + 
+                        Double.toString(rightCurrentGains.KP) + " | " + 
+                        Double.toString(rightCurrentGains.KI) + " | " + 
+                        Double.toString(rightCurrentGains.KD);
+    logData.AddData("Chassis:RgtPIDGains", rightGains);
   }
 
   @Override

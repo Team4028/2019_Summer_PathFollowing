@@ -7,6 +7,7 @@
 
 package frc.robot.commands.chassis;
 
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
@@ -41,7 +42,8 @@ public class DriveClosedLoopVelocity extends Command {
   protected void initialize() 
   {
     // init runtime timer
-    _startTimeInMS = System.currentTimeMillis();
+    //_startTimeInMS = System.currentTimeMillis();
+    _startTimeInMS = RobotController.getFPGATime() / 1000;
 
     // set correct pid constants to use
     _chassis.setActivePIDConstantsSlot(_pidSlotIndex);
@@ -50,6 +52,9 @@ public class DriveClosedLoopVelocity extends Command {
     {
       Robot._DataLogger.setMarker(_markerName);
     }
+
+    _chassis.zeroSensors();
+    Robot._navX.zeroYaw();
   }
 
   // Called repeatedly when this Command is scheduled to run
@@ -63,7 +68,8 @@ public class DriveClosedLoopVelocity extends Command {
   @Override
   protected boolean isFinished() 
   {
-    long currentTimeInMS = System.currentTimeMillis();
+    //long currentTimeInMS = System.currentTimeMillis();
+    long currentTimeInMS = RobotController.getFPGATime() / 1000;
     long elapsedTimeInMS = currentTimeInMS - _startTimeInMS;
     if(elapsedTimeInMS >= _runTimeInMS)
     {
@@ -80,6 +86,10 @@ public class DriveClosedLoopVelocity extends Command {
   protected void end() 
   {
     _chassis.stop(true);
+    if(Robot._DataLogger != null)
+    {
+      Robot._DataLogger.clearMarker();
+    }
   }
 
   // Called when another command which requires one or more of the same
@@ -87,5 +97,9 @@ public class DriveClosedLoopVelocity extends Command {
   @Override
   protected void interrupted() {
     _chassis.stop(true);
+    if(Robot._DataLogger != null)
+    {
+      Robot._DataLogger.clearMarker();
+    }
   }
 }

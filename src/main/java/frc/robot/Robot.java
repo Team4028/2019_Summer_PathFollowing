@@ -47,7 +47,7 @@ public class Robot extends TimedRobot {
   private OI _oi = OI.getInstance();
 
   // sensors
-  private GyroNavX _navX = GyroNavX.getInstance();
+  public static GyroNavX _navX = GyroNavX.getInstance();
 
   // subsystems
   public static Chassis _Chassis = Chassis.getInstance();
@@ -104,7 +104,7 @@ public class Robot extends TimedRobot {
   {
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
 
-    //_navX = GyroNavX.getInstance();
+    _navX.zeroYaw();
     //_chassis = Chassis.getInstance();
     
     //_oi = OI.getInstance();
