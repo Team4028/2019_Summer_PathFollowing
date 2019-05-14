@@ -12,6 +12,8 @@ import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
+import java.io.IOException;
+
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 
 import edu.wpi.first.wpilibj.AnalogGyro;
@@ -43,7 +45,7 @@ public class Robot extends TimedRobot {
   private static final String ROBOT_NAME = "2019 PathFollowing-TomB";
 
   // create instance of each Subsystem (singleton)
-  //  Note: add each one to the outputAllToDashboard & logAllData methods below
+  // Note: add each one to the outputAllToDashboard & logAllData methods below
   // ux
   private OI _oi = OI.getInstance();
 
@@ -57,7 +59,7 @@ public class Robot extends TimedRobot {
   public static DataLogger _DataLogger = null;
   private String _buildMsg = "?";
 
-  //=====================================================
+  // =====================================================
 
   // number of encoder counts per wheel revolution
   private static final int k_ticks_per_rev = 1024;
@@ -71,7 +73,8 @@ public class Robot extends TimedRobot {
   // the port numbers for the left and right speed controllers
   private static final int k_right_channel = 1;
 
-  // the port numbers for the encoders connected to the left and right side of the drivetrain
+  // the port numbers for the encoders connected to the left and right side of the
+  // drivetrain
   private static final int k_left_encoder_port_a = 0;
   private static final int k_left_encoder_port_b = 1;
   private static final int k_right_encoder_port_a = 2;
@@ -81,7 +84,10 @@ public class Robot extends TimedRobot {
   private static final int k_gyro_port = 0;
 
   // name of this path
-  private static final String k_path_name = "example";
+  // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
+  // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
+  // https://www.chiefdelphi.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
+  private static final String k_path_name = "Straight_v1"; //= "RightTurn_v1";
 
   private SpeedController _left_motor;
   private SpeedController _right_motor;
@@ -89,34 +95,33 @@ public class Robot extends TimedRobot {
   private Encoder _left_encoder;
   private Encoder _right_encoder;
 
-  //private AnalogGyro _gyro;
+  // private AnalogGyro _gyro;
 
   private EncoderFollower _left_follower;
   private EncoderFollower _right_follower;
-  
+
   private Notifier _follower_notifier;
 
   /**
-   * This function is run when the robot is first started up and should be
-   * used for any initialization code.
+   * This function is run when the robot is first started up and should be used
+   * for any initialization code.
    */
   @Override
-  public void robotInit() 
-  {
+  public void robotInit() {
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
 
     _navX.zeroYaw();
-    //_chassis = Chassis.getInstance();
-    
-    //_oi = OI.getInstance();
+    // _chassis = Chassis.getInstance();
 
-   // _left_motor = new Spark(k_left_channel);
-    //_right_motor = new Spark(k_right_channel);
+    // _oi = OI.getInstance();
 
-    //_left_encoder = new Encoder(k_left_encoder_port_a, k_left_encoder_port_b);
-    //_right_encoder = new Encoder(k_right_encoder_port_a, k_right_encoder_port_b);
+    // _left_motor = new Spark(k_left_channel);
+    // _right_motor = new Spark(k_right_channel);
 
-    //_gyro = new AnalogGyro(k_gyro_port);
+    // _left_encoder = new Encoder(k_left_encoder_port_a, k_left_encoder_port_b);
+    // _right_encoder = new Encoder(k_right_encoder_port_a, k_right_encoder_port_b);
+
+    // _gyro = new AnalogGyro(k_gyro_port);
   }
 
   /********************************************************************************************
@@ -124,29 +129,38 @@ public class Robot extends TimedRobot {
    ********************************************************************************************/
   /**
    * This autonomous (along with the chooser code above) shows how to select
-   * between different autonomous modes using the dashboard. The sendable
-   * chooser code works with the Java SmartDashboard. If you prefer the
-   * LabVIEW Dashboard, remove all of the chooser code and uncomment the
-   * getString code to get the auto name from the text box below the Gyro
+   * between different autonomous modes using the dashboard. The sendable chooser
+   * code works with the Java SmartDashboard. If you prefer the LabVIEW Dashboard,
+   * remove all of the chooser code and uncomment the getString code to get the
+   * auto name from the text box below the Gyro
    *
-   * <p>You can add additional auto modes by adding additional commands to the
-   * chooser code above (like the commented example) or additional comparisons
-   * to the switch structure below with additional strings & commands.
+   * <p>
+   * You can add additional auto modes by adding additional commands to the
+   * chooser code above (like the commented example) or additional comparisons to
+   * the switch structure below with additional strings & commands.
    */
   @Override
-  public void autonomousInit() 
-  {
+  public void autonomousInit() {
     _Chassis.zeroSensors();
     _Chassis.stop(true);
     _Chassis.setBrakeMode(NeutralMode.Brake);
 
     _navX.zeroYaw();
 
-    _DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging	
+    _DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging
 
-    /*
-    Trajectory left_trajectory = null; //PathfinderFRC.getTrajectory(k_path_name + ".left");
-    Trajectory right_trajectory = null; //PathfinderFRC.getTrajectory(k_path_name + ".right");
+    Trajectory left_trajectory = null;
+    Trajectory right_trajectory = null;
+    try {
+      // bug fixed in v2019.3.1
+      //left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
+      left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
+      //right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
+      right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
 
     _left_follower = new EncoderFollower(left_trajectory);
     _right_follower = new EncoderFollower(right_trajectory);
@@ -161,7 +175,7 @@ public class Robot extends TimedRobot {
     
     _follower_notifier = new Notifier(this::followPath);
     _follower_notifier.startPeriodic(left_trajectory.get(0).dt);
-    */
+    
   }
 
   private void followPath() 
