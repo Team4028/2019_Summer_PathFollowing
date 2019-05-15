@@ -40,12 +40,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   private static final int BIG_NUMBER = (int) 1e6;
 
   // Robot Physical Constants
-  private static final double DRIVE_WHEEL_DIAMETER_IN = 7.0;
+  public static final double DRIVE_WHEEL_DIAMETER_IN = 7.0;
   private static final double TRACK_WIDTH_INCHES = 24.0;
+  public static final double MAX_VEL_IN_PER_SEC = 135;
   // Encoder Constants
   private static double ENCODER_REVS_PER_WHEEL_REV = 12.0;
   private static double NU_PER_ENCODER_REV = 1024; // 256 CPR * 4 (Quad Encoder)
-  private static double ENCODER_COUNTS_PER_WHEEL_REV = ENCODER_REVS_PER_WHEEL_REV * NU_PER_ENCODER_REV; // 12288;
+  public static double ENCODER_COUNTS_PER_WHEEL_REV = ENCODER_REVS_PER_WHEEL_REV * NU_PER_ENCODER_REV; // 12288;
 
   // PID constants
   public static final int PID_PROFILE_SLOT_IDX_STD = 0;

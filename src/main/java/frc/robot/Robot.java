@@ -60,42 +60,11 @@ public class Robot extends TimedRobot {
   private String _buildMsg = "?";
 
   // =====================================================
-
-  // number of encoder counts per wheel revolution
-  private static final int k_ticks_per_rev = 1024;
-  // diameter of the wheels
-  private static final double k_wheel_diameter = 4.0 / 12.0;
-  // maximum velocity of the robot
-  private static final double k_max_velocity = 10;
-
-  // the port numbers for the left and right speed controllers
-  private static final int k_left_channel = 0;
-  // the port numbers for the left and right speed controllers
-  private static final int k_right_channel = 1;
-
-  // the port numbers for the encoders connected to the left and right side of the
-  // drivetrain
-  private static final int k_left_encoder_port_a = 0;
-  private static final int k_left_encoder_port_b = 1;
-  private static final int k_right_encoder_port_a = 2;
-  private static final int k_right_encoder_port_b = 3;
-
-  // the analog input for the gyro (other gyros might be connected differently)
-  private static final int k_gyro_port = 0;
-
   // name of this path
   // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
   // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
   // https://www.chiefdelphi.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
   private static final String k_path_name = "Straight_v1"; //= "RightTurn_v1";
-
-  private SpeedController _left_motor;
-  private SpeedController _right_motor;
-
-  private Encoder _left_encoder;
-  private Encoder _right_encoder;
-
-  // private AnalogGyro _gyro;
 
   private EncoderFollower _left_follower;
   private EncoderFollower _right_follower;
@@ -107,21 +76,11 @@ public class Robot extends TimedRobot {
    * for any initialization code.
    */
   @Override
-  public void robotInit() {
+  public void robotInit() 
+  {
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
 
     _navX.zeroYaw();
-    // _chassis = Chassis.getInstance();
-
-    // _oi = OI.getInstance();
-
-    // _left_motor = new Spark(k_left_channel);
-    // _right_motor = new Spark(k_right_channel);
-
-    // _left_encoder = new Encoder(k_left_encoder_port_a, k_left_encoder_port_b);
-    // _right_encoder = new Encoder(k_right_encoder_port_a, k_right_encoder_port_b);
-
-    // _gyro = new AnalogGyro(k_gyro_port);
   }
 
   /********************************************************************************************
@@ -152,30 +111,50 @@ public class Robot extends TimedRobot {
     Trajectory left_trajectory = null;
     Trajectory right_trajectory = null;
     try {
+      // /home/lvuser/deploy/paths <== folder on the roboRIO
       // bug fixed in v2019.3.1
       //left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
       left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
       //right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
       right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
     } catch (IOException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
     }
 
     _left_follower = new EncoderFollower(left_trajectory);
     _right_follower = new EncoderFollower(right_trajectory);
 
-    _left_follower.configureEncoder(_left_encoder.get(), k_ticks_per_rev, k_wheel_diameter);
-    // You must tune the PID values on the following line!
-    _left_follower.configurePIDVA(1.0, 0.0, 0.0, 1 / k_max_velocity, 0);
+    /*
+    Equation: output = (kP * error) + (kD * diff(error)/dt) + (kV * vel) + (kA * accel)
 
-    _right_follower.configureEncoder(_right_encoder.get(), k_ticks_per_rev, k_wheel_diameter);
+    kP -> Proportional gain. Units: %/m. I typically start off with this at around 0.8-1.2, using a standard AM drivebase.
+
+    kI -> pathfinder ignores kI
+
+    kD -> Derivative gain. Units: %/(m/s). I’ll typically only tune this if tracking is bad, 
+          so usually I’ll keep it at 0 unless I have a reason to change it. 
+          You can think of it like a way to increase the value that the kV term puts out, 
+          which can help in the lower velocity ranges if your acceleration is bad.
+
+    kV -> Velocity Feed-forward gain. Units: %/(m/s). This should be max_%/max_vel (i.e. 1 / max_vel). 
+          This is used to give the loop some kind of knowledge about what its velocity should be. 
+          As Oblarg mentioned, in other implementations (i.e. Talon SRX) this will be calculated differently.
+
+    kA -> Acceleration Feed-forward gain. Units: %/(m/s/s). 
+          I typically leave this value at 0, but you can adjust it if you’re unhappy with the speed of your robot 
+          and need more power in the acceleration phase(s) of the loop. This value can also be pretty dangerous if you tune it too high.
+    */
+
+    _left_follower.configureEncoder((int)_Chassis.getLeftEncoderPositionInNU(), (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, Chassis.DRIVE_WHEEL_DIAMETER_IN);
     // You must tune the PID values on the following line!
-    _right_follower.configurePIDVA(1.0, 0.0, 0.0, 1 / k_max_velocity, 0);
+    _left_follower.configurePIDVA(1.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0);
+
+    _right_follower.configureEncoder((int)_Chassis.getRightEncoderPositionInNU(), (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, Chassis.DRIVE_WHEEL_DIAMETER_IN);
+    // You must tune the PID values on the following line!
+    _right_follower.configurePIDVA(1.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0);
     
     _follower_notifier = new Notifier(this::followPath);
     _follower_notifier.startPeriodic(left_trajectory.get(0).dt);
-    
   }
 
   private void followPath() 
@@ -183,21 +162,21 @@ public class Robot extends TimedRobot {
     if (_left_follower.isFinished() || _right_follower.isFinished()) 
     {
       _follower_notifier.stop();
+      _Chassis.stop(true);
     } 
     else 
     {
-      double left_speed = _left_follower.calculate(_left_encoder.get());
-      double right_speed = _right_follower.calculate(_right_encoder.get());
+      double left_speed = _left_follower.calculate((int)_Chassis.getLeftEncoderPositionInNU());
+      double right_speed = _right_follower.calculate((int)_Chassis.getRightEncoderPositionInNU());
 
       // If you have a typical gyro, then it gives a + reading for a clockwise rotation \
       // where Pathfinder expects this to be a negative gyro direction.
-      double heading = 0;// _gyro.getAngle();
+      double heading = _navX.getPathfinderYaw();
       double desired_heading = Pathfinder.r2d(_left_follower.getHeading());
       double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
       double turn =  0.8 * (-1.0/80.0) * heading_difference;
 
-      _left_motor.set(left_speed + turn);
-      _right_motor.set(right_speed - turn);
+      _Chassis.setClosedLoopVelocityCmd(left_speed + turn, right_speed - turn);
     }
   }
 
