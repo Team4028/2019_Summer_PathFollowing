@@ -10,7 +10,7 @@ package frc.robot.util;
 /**
  * This class holds a set of PID Gain constants
  */
-public class GainsBE 
+public class MotorCtrPIDGainsBE 
 {
 	public final double KP;
 	public final double KI;
@@ -19,7 +19,7 @@ public class GainsBE
 	public final int KMaxI;
 	public final double KPeakOutput;
 
-    public GainsBE(double _kP, double _kI, double _kD, double _kF, int _kMaxI, double _kPeakOutput)
+    public MotorCtrPIDGainsBE(double _kP, double _kI, double _kD, double _kF, int _kMaxI, double _kPeakOutput)
     {
 		KP = _kP;
 		KI = _kI;

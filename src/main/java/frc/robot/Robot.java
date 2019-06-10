@@ -25,6 +25,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
+import frc.robot.util.EncoderFollowerPIDGainsBE;
 import frc.robot.util.GeneralUtilities;
 import frc.robot.util.LogDataBE;
 import frc.robot.ux.OI;
@@ -32,6 +33,7 @@ import frc.robot.ux.OI;
 import jaci.pathfinder.Pathfinder;
 import jaci.pathfinder.PathfinderFRC;
 import jaci.pathfinder.Trajectory;
+import jaci.pathfinder.Trajectory.Segment;
 import jaci.pathfinder.followers.EncoderFollower;
 
 /**
@@ -64,12 +66,18 @@ public class Robot extends TimedRobot {
   // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
   // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
   // https://www.chiefdelphi.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
-  private static final String k_path_name = "Straight_v1"; //= "RightTurn_v1";
+  private static final String k_path_name = "Straight_v2"; //= "RightTurn_v1";
 
   private EncoderFollower _left_follower;
   private EncoderFollower _right_follower;
 
+  private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
+        = new EncoderFollowerPIDGainsBE(1.75, 0, 0.25, 1.0 / Chassis.MAX_VEL_IN_PER_SEC, 0);
+  private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
+        = new EncoderFollowerPIDGainsBE(1.75, 0, 0.25, 1.0 / Chassis.MAX_VEL_IN_PER_SEC, 0);
+
   private Notifier _follower_notifier;
+  private boolean _isNotifierRunning = false;
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -81,6 +89,22 @@ public class Robot extends TimedRobot {
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
 
     _navX.zeroYaw();
+
+    Trajectory left_trajectory = null;
+    Trajectory right_trajectory = null;
+    try {
+      // /home/lvuser/deploy/paths <== folder on the roboRIO
+      // bug fixed in v2019.3.1
+      //left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
+      left_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".right");
+      //right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
+      right_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".left");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    _left_follower = new EncoderFollower(left_trajectory);
+    _right_follower = new EncoderFollower(right_trajectory);
   }
 
   /********************************************************************************************
@@ -108,21 +132,21 @@ public class Robot extends TimedRobot {
 
     _DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging
 
-    Trajectory left_trajectory = null;
-    Trajectory right_trajectory = null;
-    try {
+    //Trajectory left_trajectory = null;
+    //Trajectory right_trajectory = null;
+    //try {
       // /home/lvuser/deploy/paths <== folder on the roboRIO
       // bug fixed in v2019.3.1
       //left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
-      left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
+      //left_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".right");
       //right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
-      right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+      //right_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".left");
+    //} catch (IOException e) {
+      //e.printStackTrace();
+    //}
 
-    _left_follower = new EncoderFollower(left_trajectory);
-    _right_follower = new EncoderFollower(right_trajectory);
+    //_left_follower = new EncoderFollower(left_trajectory);
+    //_right_follower = new EncoderFollower(right_trajectory);
 
     /*
     Equation: output = (kP * error) + (kD * diff(error)/dt) + (kV * vel) + (kA * accel)
@@ -147,22 +171,33 @@ public class Robot extends TimedRobot {
 
     _left_follower.configureEncoder((int)_Chassis.getLeftEncoderPositionInNU(), (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, Chassis.DRIVE_WHEEL_DIAMETER_IN);
     // You must tune the PID values on the following line!
-    _left_follower.configurePIDVA(1.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0);
+    //_left_follower.configurePIDVA(2.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0.0);
+    _left_follower.configurePIDVA(_leftFollowerGains.KP, _leftFollowerGains.KI, _leftFollowerGains.KD, _leftFollowerGains.KV, _leftFollowerGains.KA);
 
     _right_follower.configureEncoder((int)_Chassis.getRightEncoderPositionInNU(), (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, Chassis.DRIVE_WHEEL_DIAMETER_IN);
     // You must tune the PID values on the following line!
-    _right_follower.configurePIDVA(1.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0);
+    //_right_follower.configurePIDVA(2.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0.0);
+    _right_follower.configurePIDVA(_rightFollowerGains.KP, _rightFollowerGains.KI, _rightFollowerGains.KD, _rightFollowerGains.KV, _rightFollowerGains.KA);
     
+    _Chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_LS);
+
+    // setup notifier thread that fires on the interval in the path file(s)
     _follower_notifier = new Notifier(this::followPath);
-    _follower_notifier.startPeriodic(left_trajectory.get(0).dt);
+    //_follower_notifier.startPeriodic(left_trajectory.get(0).dt);
+    _follower_notifier.startPeriodic(0.02);
+    _isNotifierRunning = true;
   }
 
   private void followPath() 
   {
     if (_left_follower.isFinished() || _right_follower.isFinished()) 
     {
+      // stop the notifier thread
       _follower_notifier.stop();
+      _isNotifierRunning = false;
       _Chassis.stop(true);
+      System.out.println("Left: " + _left_follower.isFinished() );
+      System.out.println("Rgt: " + _right_follower.isFinished() );
     } 
     else 
     {
@@ -177,6 +212,9 @@ public class Robot extends TimedRobot {
       double turn =  0.8 * (-1.0/80.0) * heading_difference;
 
       _Chassis.setClosedLoopVelocityCmd(left_speed + turn, right_speed - turn);
+
+      // if we are running the notifier loop, sync logging to that thread
+      this.logAllData();
     }
   }
 
@@ -272,7 +310,8 @@ public class Robot extends TimedRobot {
     // ============= Refresh Dashboard ============= 
     this.outputAllToDashboard();
 
-    if(!isDisabled() && _DataLogger != null)
+    // log data from here if notifier is not running
+    if(!isDisabled() && (_DataLogger != null) && !_isNotifierRunning)
     {
       // ============= Optionally Log Data =============
       this.logAllData();
@@ -308,7 +347,43 @@ public class Robot extends TimedRobot {
         // ----------------------------------------------
         if(_Chassis != null)              { _Chassis.updateLogData(logData); }
         if(_navX != null)                 { _navX.updateLogData(logData); }
+        if(_isNotifierRunning)            { this.updateLogData(logData); }
+
 	    	_DataLogger.WriteDataLine(logData);
     	}
-	}
+  }
+  
+  private void updateLogData(LogDataBE logData) 
+  {
+    if (!_left_follower.isFinished()) 
+    {
+      String leftGains = Double.toString(_leftFollowerGains.KP) + " | " + 
+                          Double.toString(_leftFollowerGains.KI) + " | " + 
+                          Double.toString(_leftFollowerGains.KD) + " | " + 
+                          Double.toString(_leftFollowerGains.KV) + " | " + 
+                          Double.toString(_leftFollowerGains.KA);
+      logData.AddData("LeftFollower:Gains", leftGains);
+
+      Segment currentLeftSegment = _left_follower.getSegment();
+      logData.AddData("LeftFollower:SegmentPos", Double.toString(currentLeftSegment.position));
+      logData.AddData("LeftFollower:SegmentVel", Double.toString(currentLeftSegment.velocity));
+      logData.AddData("LeftFollower:SegmentAccel", Double.toString(currentLeftSegment.acceleration));
+    }
+
+    if (!_right_follower.isFinished()) 
+    {
+      String rightGains = Double.toString(_rightFollowerGains.KP) + " | " + 
+                          Double.toString(_rightFollowerGains.KI) + " | " + 
+                          Double.toString(_rightFollowerGains.KD) + " | " + 
+                          Double.toString(_rightFollowerGains.KV) + " | " + 
+                          Double.toString(_rightFollowerGains.KA);
+      logData.AddData("RgtFollower:Gains", rightGains);
+      
+      Segment currentRightSegment = _right_follower.getSegment();
+      logData.AddData("RgtFollower:SegmentPos", Double.toString(currentRightSegment.position));
+      logData.AddData("RgtFollower:SegmentVel", Double.toString(currentRightSegment.velocity));
+      logData.AddData("RgtFollower:SegmentAccel", Double.toString(currentRightSegment.acceleration));
+    }
+  }
+
 }

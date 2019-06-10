@@ -13,6 +13,7 @@ import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.LimitSwitchNormal;
 import com.ctre.phoenix.motorcontrol.LimitSwitchSource;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
+import com.ctre.phoenix.motorcontrol.StatusFrame;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.Talon;
@@ -20,7 +21,7 @@ import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.RobotMap;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
-import frc.robot.util.GainsBE;
+import frc.robot.util.MotorCtrPIDGainsBE;
 import frc.robot.util.LogDataBE;
 
 /**
@@ -49,7 +50,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   public static double ENCODER_COUNTS_PER_WHEEL_REV = ENCODER_REVS_PER_WHEEL_REV * NU_PER_ENCODER_REV; // 12288;
 
   // PID constants
-  public static final int PID_PROFILE_SLOT_IDX_STD = 0;
+  public static final int PID_PROFILE_SLOT_IDX_HS = 0;
+  public static final int PID_PROFILE_SLOT_IDX_LS = 1;
   private static final int PID_PROFILE_PID_IDX_PRIMARY = 0;
 
   private int _activePIDProfileSlotIdx = 0;
@@ -61,11 +63,18 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
    * 
    *                                                            kP      kI   kD       kF          Iz   PeakOut
    */
-  private final static GainsBE PID_GAINS_LEFT_STD = new GainsBE(0.135, 0.15, 0.0, 1023.0 / 8000.0, 300, 1.00);
-  private final static GainsBE PID_GAINS_RGT_STD = new GainsBE(0.1225, 0.15, 0.0, 1023.0 / 8350.0, 300, 1.00);
+
+  // 100 IPS
+  private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_HS = new MotorCtrPIDGainsBE(0.135, 0.15, 0.0, 1023.0 / 8000.0, 300, 1.00);
+  private final static MotorCtrPIDGainsBE PID_GAINS_RGT_HS = new MotorCtrPIDGainsBE(0.1225, 0.15, 0.0, 1023.0 / 8350.0, 300, 1.00);
   
-  private GainsBE[] _pidGainsLeftLU = new GainsBE[4];
-  private GainsBE[] _pidGainsRgtLU = new GainsBE[4];
+  // 0-40 IPS
+  private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_LS = new MotorCtrPIDGainsBE(0.160, 0.25, 0.0, 1023.0 / 8000.0, 300, 1.00);
+  private final static MotorCtrPIDGainsBE PID_GAINS_RGT_LS = new MotorCtrPIDGainsBE(0.1475, 0.25, 0.0, 1023.0 / 8350.0, 300, 1.00);
+ 
+
+  private MotorCtrPIDGainsBE[] _pidGainsLeftLU = new MotorCtrPIDGainsBE[4];
+  private MotorCtrPIDGainsBE[] _pidGainsRgtLU = new MotorCtrPIDGainsBE[4];
 
   // =====================================================================================
   // Define Singleton Pattern
@@ -94,9 +103,15 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     _leftSlave1.follow(_leftMaster);
     _leftSlave2.follow(_leftMaster);
 
-    setPIDParams(_leftMaster, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_LEFT_STD, _pidGainsLeftLU);
-    setPIDParams(_leftSlave1, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_LEFT_STD, _pidGainsLeftLU);
-    setPIDParams(_leftSlave2, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_LEFT_STD, _pidGainsLeftLU);
+    // high speed
+    setPIDParams(_leftMaster, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS, _pidGainsLeftLU);
+    setPIDParams(_leftSlave1, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS, _pidGainsLeftLU);
+    setPIDParams(_leftSlave2, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS, _pidGainsLeftLU);
+
+    // low speed
+    setPIDParams(_leftMaster, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS, _pidGainsLeftLU);
+    setPIDParams(_leftSlave1, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS, _pidGainsLeftLU);
+    setPIDParams(_leftSlave2, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS, _pidGainsLeftLU);
 
     // =============================================
     // define chassis right side motor controllers
@@ -114,9 +129,15 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     _rightSlave1.follow(_rightMaster);
     _rightSlave2.follow(_rightMaster);
 
-    setPIDParams(_rightMaster, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_RGT_STD, _pidGainsRgtLU);
-    setPIDParams(_rightSlave1, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_RGT_STD, _pidGainsRgtLU);
-    setPIDParams(_rightSlave2, PID_PROFILE_SLOT_IDX_STD, PID_GAINS_RGT_STD, _pidGainsRgtLU);
+    // high speed
+    setPIDParams(_rightMaster, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS, _pidGainsRgtLU);
+    setPIDParams(_rightSlave1, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS, _pidGainsRgtLU);
+    setPIDParams(_rightSlave2, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS, _pidGainsRgtLU);
+
+    // low speed
+    setPIDParams(_rightMaster, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS, _pidGainsRgtLU);
+    setPIDParams(_rightSlave1, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS, _pidGainsRgtLU);
+    setPIDParams(_rightSlave2, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS, _pidGainsRgtLU);
   }
 
   private TalonSRX configMasterMotor(int canAddress) {
@@ -133,6 +154,9 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     // talon.configVelocityMeasurementWindow(32, CAN_TIMEOUT_MSECS_INIT);
 
     driveMotor.configClosedloopRamp(0.0, CAN_TIMEOUT_MSECS_INIT);
+
+    // update PID 0 feedback values more often (default = 100mS) so error value is more accurate
+    driveMotor.setStatusFramePeriod(StatusFrame.Status_13_Base_PIDF0, 20, CAN_TIMEOUT_MSECS_INIT);
 
     return driveMotor;
   }
@@ -251,7 +275,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     return nuPer100mS;
   }
 
-  private void setPIDParams(TalonSRX talon, int pidSlotIDX, GainsBE pidGains, GainsBE[] pidGainsLU) {
+  private void setPIDParams(TalonSRX talon, int pidSlotIDX, MotorCtrPIDGainsBE pidGains, MotorCtrPIDGainsBE[] pidGainsLU) {
     // Config the Velocity closed loop gains
     talon.config_kF(pidSlotIDX, pidGains.KF, CAN_TIMEOUT_MSECS_INIT);
     talon.config_kP(pidSlotIDX, pidGains.KP, CAN_TIMEOUT_MSECS_INIT);
@@ -404,7 +428,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     logData.AddData("Chassis:LeftChasVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
     logData.AddData("Chassis:LeftControlMode", _leftMaster.getControlMode().toString());
     logData.AddData("Chassis:LeftOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
-    GainsBE leftCurrentGains = _pidGainsLeftLU[_activePIDProfileSlotIdx];
+    MotorCtrPIDGainsBE leftCurrentGains = _pidGainsLeftLU[_activePIDProfileSlotIdx];
     String leftGains = Double.toString(leftCurrentGains.KF) + " | " + 
                         Double.toString(leftCurrentGains.KP) + " | " + 
                         Double.toString(leftCurrentGains.KI) + " | " + 
@@ -421,7 +445,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     logData.AddData("Chassis:RgtChasVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
     logData.AddData("Chassis:RgtControlMode", _rightMaster.getControlMode().toString());
     logData.AddData("Chassis:RgtOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
-    GainsBE rightCurrentGains = _pidGainsRgtLU[_activePIDProfileSlotIdx];
+    MotorCtrPIDGainsBE rightCurrentGains = _pidGainsRgtLU[_activePIDProfileSlotIdx];
     String rightGains = Double.toString(rightCurrentGains.KF) + " | " + 
                         Double.toString(rightCurrentGains.KP) + " | " + 
                         Double.toString(rightCurrentGains.KI) + " | " + 
