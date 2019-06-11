@@ -211,7 +211,8 @@ public class Robot extends TimedRobot {
       double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
       double turn =  0.8 * (-1.0/80.0) * heading_difference;
 
-      _Chassis.setClosedLoopVelocityCmd(left_speed + turn, right_speed - turn);
+      //_Chassis.setClosedLoopVelocityCmd(left_speed + turn, right_speed - turn);
+      _Chassis.setOpenLoopVelocityCmd(left_speed + turn, right_speed - turn);
 
       // if we are running the notifier loop, sync logging to that thread
       this.logAllData();

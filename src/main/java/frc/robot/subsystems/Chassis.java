@@ -251,6 +251,12 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     _activePIDProfileSlotIdx = slotIdx;
   }
 
+  public void setOpenLoopVelocityCmd(double leftPercentOutput, double rightPercentOutput)
+  {
+    _leftMaster.set(ControlMode.PercentOutput, leftPercentOutput);
+    _rightMaster.set(ControlMode.PercentOutput, rightPercentOutput);
+  }
+
   public void setClosedLoopVelocityCmd(double leftTargetVelInInchPerSec, double rightTargetVelInInchPerSec)
   {
     _leftMaster.set(ControlMode.Velocity, convertInchesPerSecToNUPer100mS(leftTargetVelInInchPerSec));
@@ -409,6 +415,10 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
 
   private static double convertInchesPerSecToNUPer100mS(double inchesPerSecond) {
     return (inchesPerSecond * ENCODER_COUNTS_PER_WHEEL_REV) / (DRIVE_WHEEL_DIAMETER_IN * Math.PI * 10);
+  }
+
+  private static double convertInchesPerSecToPercentOut(double inchesPerSecond) {
+    return (12.0 / Chassis.MAX_VEL_IN_PER_SEC) * inchesPerSecond;
   }
 
   private static double convertNUper100msToInchesPerSec(double nuPer100ms) {
