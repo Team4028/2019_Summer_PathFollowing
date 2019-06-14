@@ -8,7 +8,8 @@
 package frc.robot.util;
 
 /**
- * Add your docs here.
+ * Class to hold gains for EncoderFollower
+ * KI commented out since I Gain is not supported
  */
 public class EncoderFollowerPIDGainsBE 
 {
@@ -18,10 +19,10 @@ public class EncoderFollowerPIDGainsBE
 	public final double KV;
 	public final double KA;
 
-    public EncoderFollowerPIDGainsBE(double _kP, double _kI, double _kD, double _kV, int _kA)
+    public EncoderFollowerPIDGainsBE(double _kP, double _kD, double _kV, double _kA)
     {
 		KP = _kP;
-		KI = _kI;
+		KI = 0;
 		KD = _kD;
 		KV = _kV;
 		KA = _kA;

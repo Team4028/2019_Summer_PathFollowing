@@ -22,6 +22,7 @@ import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.TimedRobot;
+import frc.robot.commands.chassis.DriveFollowPathOpenLoop;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
@@ -61,24 +62,27 @@ public class Robot extends TimedRobot {
   public static DataLogger _DataLogger = null;
   private String _buildMsg = "?";
 
+  private Command _autonomousCommand;
   // =====================================================
   // name of this path
   // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
   // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
   // https://www.chiefdelphi.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
-  private static final String k_path_name = "Straight_v2"; //= "RightTurn_v1";
+  private static final String k_path_name = "Straight_v1"; //
 
   private EncoderFollower _left_follower;
   private EncoderFollower _right_follower;
 
   private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-        = new EncoderFollowerPIDGainsBE(1.75, 0, 0.25, 1.0 / Chassis.MAX_VEL_IN_PER_SEC, 0);
+      = new EncoderFollowerPIDGainsBE(0.15, 0.0, 1.0 / 70, 0.0);
+
+
   private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-        = new EncoderFollowerPIDGainsBE(1.75, 0, 0.25, 1.0 / Chassis.MAX_VEL_IN_PER_SEC, 0);
+      = new EncoderFollowerPIDGainsBE(0.15, 0.0, 1.0 / 70, 0.0);
 
   private Notifier _follower_notifier;
   private boolean _isNotifierRunning = false;
-
+  private double _notifierTimeInterval = 0;
   /**
    * This function is run when the robot is first started up and should be used
    * for any initialization code.
@@ -90,21 +94,25 @@ public class Robot extends TimedRobot {
 
     _navX.zeroYaw();
 
-    Trajectory left_trajectory = null;
-    Trajectory right_trajectory = null;
-    try {
+    //Trajectory left_trajectory = null;
+    //Trajectory right_trajectory = null;
+    //try {
       // /home/lvuser/deploy/paths <== folder on the roboRIO
-      // bug fixed in v2019.3.1
-      //left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
-      left_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".right");
-      //right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
-      right_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".left");
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+      // generated path names are reversed, bug fixed in v2019.3.1
+      //left_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".right");
+      //right_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".left");
 
-    _left_follower = new EncoderFollower(left_trajectory);
-    _right_follower = new EncoderFollower(right_trajectory);
+      //_notifierTimeInterval = left_trajectory.get(0).dt;
+    //} catch (IOException e) {
+      //e.printStackTrace();
+    //}
+
+    //_left_follower = new EncoderFollower(left_trajectory);
+    //_right_follower = new EncoderFollower(right_trajectory);
+    
+    //_DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging
+    //_follower_notifier = new Notifier(this::followPath);
+    //_isNotifierRunning = false;
   }
 
   /********************************************************************************************
@@ -126,11 +134,11 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     _Chassis.zeroSensors();
     _Chassis.stop(true);
-    _Chassis.setBrakeMode(NeutralMode.Brake);
+    //_Chassis.setBrakeMode(NeutralMode.Brake);
 
     _navX.zeroYaw();
 
-    _DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging
+    //_DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging
 
     //Trajectory left_trajectory = null;
     //Trajectory right_trajectory = null;
@@ -168,41 +176,72 @@ public class Robot extends TimedRobot {
           I typically leave this value at 0, but you can adjust it if you’re unhappy with the speed of your robot 
           and need more power in the acceleration phase(s) of the loop. This value can also be pretty dangerous if you tune it too high.
     */
+      /*
+    _left_follower.configureEncoder((int)_Chassis.getLeftEncoderPositionInNU(), 
+                                    (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, 
+                                    Chassis.DRIVE_WHEEL_DIAMETER_IN);
 
-    _left_follower.configureEncoder((int)_Chassis.getLeftEncoderPositionInNU(), (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, Chassis.DRIVE_WHEEL_DIAMETER_IN);
-    // You must tune the PID values on the following line!
-    //_left_follower.configurePIDVA(2.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0.0);
-    _left_follower.configurePIDVA(_leftFollowerGains.KP, _leftFollowerGains.KI, _leftFollowerGains.KD, _leftFollowerGains.KV, _leftFollowerGains.KA);
+    _left_follower.configurePIDVA(_leftFollowerGains.KP, 
+                                  _leftFollowerGains.KI, 
+                                  _leftFollowerGains.KD, 
+                                  _leftFollowerGains.KV, 
+                                  _leftFollowerGains.KA);
 
-    _right_follower.configureEncoder((int)_Chassis.getRightEncoderPositionInNU(), (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, Chassis.DRIVE_WHEEL_DIAMETER_IN);
-    // You must tune the PID values on the following line!
-    //_right_follower.configurePIDVA(2.0, 0.0, 0.0, 1 / Chassis.MAX_VEL_IN_PER_SEC, 0.0);
-    _right_follower.configurePIDVA(_rightFollowerGains.KP, _rightFollowerGains.KI, _rightFollowerGains.KD, _rightFollowerGains.KV, _rightFollowerGains.KA);
+    _right_follower.configureEncoder((int)_Chassis.getRightEncoderPositionInNU(), 
+                                      (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, 
+                                      Chassis.DRIVE_WHEEL_DIAMETER_IN);
+
+    _right_follower.configurePIDVA(_rightFollowerGains.KP, 
+                                    _rightFollowerGains.KI, 
+                                    _rightFollowerGains.KD, 
+                                    _rightFollowerGains.KV, 
+                                    _rightFollowerGains.KA);
     
-    _Chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_LS);
+    //_Chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_LS);
 
     // setup notifier thread that fires on the interval in the path file(s)
     _follower_notifier = new Notifier(this::followPath);
-    //_follower_notifier.startPeriodic(left_trajectory.get(0).dt);
-    _follower_notifier.startPeriodic(0.02);
+    _follower_notifier.startPeriodic(_notifierTimeInterval);
     _isNotifierRunning = true;
+      */
+    _autonomousCommand = new DriveFollowPathOpenLoop("Straight_v1");
+    // schedule the autonomous command (example)
+    if (_autonomousCommand != null) {
+      _autonomousCommand.start();
+    }
   }
 
+  // This is the command called in the notifier loop
   private void followPath() 
   {
+    if(!_isNotifierRunning)
+    {
+      return;
+    }
+
     if (_left_follower.isFinished() || _right_follower.isFinished()) 
     {
       // stop the notifier thread
       _follower_notifier.stop();
       _isNotifierRunning = false;
-      _Chassis.stop(true);
+      _Chassis.stop(false);
       System.out.println("Left: " + _left_follower.isFinished() );
       System.out.println("Rgt: " + _right_follower.isFinished() );
     } 
     else 
     {
+      // NOTE: calc result is target %output!!!
       double left_speed = _left_follower.calculate((int)_Chassis.getLeftEncoderPositionInNU());
       double right_speed = _right_follower.calculate((int)_Chassis.getRightEncoderPositionInNU());
+
+      //if(left_speed > 0 && left_speed < .1)
+      //{
+      //  left_speed = 0.1;
+      //}
+      //if(right_speed > 0 && right_speed < .1)
+      //{
+      //  right_speed = 0.1;
+      //}
 
       // If you have a typical gyro, then it gives a + reading for a clockwise rotation \
       // where Pathfinder expects this to be a negative gyro direction.

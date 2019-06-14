@@ -55,7 +55,11 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   private static final int PID_PROFILE_PID_IDX_PRIMARY = 0;
 
   private int _activePIDProfileSlotIdx = 0;
+  private double _leftTargetVelInInchPerSec = 0;
+  private double _rightTargetVelInInchPerSec = 0;
 
+  private double _leftPercentVBusCmd;
+  private double _rightPercentVBusCmd;
   /**
    * PID Gains may have to be adjusted based on the responsiveness of control
    * loop. kF: 1023 represents output value to Talon at 100%, 9200 represents
@@ -157,7 +161,6 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
 
     // update PID 0 feedback values more often (default = 100mS) so error value is more accurate
     driveMotor.setStatusFramePeriod(StatusFrame.Status_13_Base_PIDF0, 20, CAN_TIMEOUT_MSECS_INIT);
-
     return driveMotor;
   }
 
@@ -221,7 +224,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
 
   public void stop(boolean isSetBrakeMode) 
   {
-    arcadeDrive(0.0, 0.0);
+    setOpenLoopVelocityCmd(0.0, 0.0);
     if(isSetBrakeMode)
     {
       setBrakeMode(NeutralMode.Brake);
@@ -251,14 +254,20 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     _activePIDProfileSlotIdx = slotIdx;
   }
 
-  public void setOpenLoopVelocityCmd(double leftPercentOutput, double rightPercentOutput)
+  public void setOpenLoopVelocityCmd(double leftPercentVBusCmd, double rightPercentVBusCmd)
   {
-    _leftMaster.set(ControlMode.PercentOutput, leftPercentOutput);
-    _rightMaster.set(ControlMode.PercentOutput, rightPercentOutput);
+    _leftPercentVBusCmd = leftPercentVBusCmd;
+    _rightPercentVBusCmd = rightPercentVBusCmd;
+
+    _leftMaster.set(ControlMode.PercentOutput, leftPercentVBusCmd);
+    _rightMaster.set(ControlMode.PercentOutput, rightPercentVBusCmd);
   }
 
   public void setClosedLoopVelocityCmd(double leftTargetVelInInchPerSec, double rightTargetVelInInchPerSec)
   {
+    _leftTargetVelInInchPerSec = leftTargetVelInInchPerSec;
+    _rightTargetVelInInchPerSec = rightTargetVelInInchPerSec;
+
     _leftMaster.set(ControlMode.Velocity, convertInchesPerSecToNUPer100mS(leftTargetVelInInchPerSec));
     _rightMaster.set(ControlMode.Velocity, convertInchesPerSecToNUPer100mS(rightTargetVelInInchPerSec));
   }
@@ -312,11 +321,11 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     return _rightMaster.getSelectedSensorPosition(0);
   }
 
-  private double getLeftChassisPositionInInches() {
+  public double getLeftChassisPositionInInches() {
     return (getLeftEncoderPositionInNU() / ENCODER_COUNTS_PER_WHEEL_REV) * DRIVE_WHEEL_DIAMETER_IN * Math.PI;
   }
 
-  private double getRightChassisPositionInInches() {
+  public double getRightChassisPositionInInches() {
     return (getRightEncoderPositionInNU() / ENCODER_COUNTS_PER_WHEEL_REV) * DRIVE_WHEEL_DIAMETER_IN * Math.PI;
   }
 
@@ -429,6 +438,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   public void updateLogData(LogDataBE logData) 
   {
     // Left Log Values
+    logData.AddData("Chassis:LeftPercentVBusCmd", Double.toString(_leftPercentVBusCmd));
+    logData.AddData("Chassis:LeftEncClosedLoopIPS", Double.toString(_leftTargetVelInInchPerSec));
     logData.AddData("Chassis:LeftEncClosedLoopTrgt", Double.toString(getLeftEncoderClosedLoopTarget()));
     logData.AddData("Chassis:LeftEncPosInNU", Double.toString(getLeftEncoderPositionInNU()));
     logData.AddData("Chassis:LeftEncActualVelInNUPer100mS", Double.toString(getLeftEncoderVelocityInNUPer100mS()));
@@ -446,6 +457,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     logData.AddData("Chassis:LeftPIDGains", leftGains);
     
     // Right Log Values
+    logData.AddData("Chassis:RgtPercentVBusCmd", Double.toString(_rightPercentVBusCmd));
+    logData.AddData("Chassis:RgtEncClosedLoopIPS", Double.toString(_rightTargetVelInInchPerSec));
     logData.AddData("Chassis:RgtEncClosedLoopTrgt", Double.toString(getRightEncoderClosedLoopTarget()));
     logData.AddData("Chassis:RgtEncPosInNU", Double.toString(getRightEncoderPositionInNU()));
     logData.AddData("Chassis:RgtEncActualVelInNUPer100mS", Double.toString(getRightEncoderVelocityInNUPer100mS()));
