@@ -36,10 +36,10 @@ public class OI {
 		//==========================================================
 
 		// Driver Controller -> Command Mapping
-		_driverController.leftStick.whileActive(new DriveWithControllers(_driverController.leftStick, _driverController.rightStick));	
-		_driverController.leftStick.whenReleased(new DriveWithControllers(_driverController.leftStick, _driverController.rightStick));
-		_driverController.rightStick.whileActive(new DriveWithControllers(_driverController.leftStick, _driverController.rightStick));	
-		_driverController.rightStick.whenReleased(new DriveWithControllers(_driverController.leftStick, _driverController.rightStick));
+		//_driverController.leftStick.whileActive(new DriveWithControllers());	
+		//_driverController.leftStick.whenReleased(new DriveWithControllers());	// this stops the 
+		//_driverController.rightStick.whileActive(new DriveWithControllers());	
+		//_driverController.rightStick.whenReleased(new DriveWithControllers());
 
 		//															run time = 10 sec
 		//															target vel = 12 in/sec
@@ -55,8 +55,28 @@ public class OI {
 		// =========== Engineer ======================================
 		// _engineerController = new BeakXboxController(RobotMap.ENGINEERING_GAMEPAD_USB_PORT);
 		// //============================================================
-		// _engineerController.a.whenPressed(new BetterVisionPath(_engineerController.a));
-		// _engineerController.a.whenReleased(new StopChassis());
+
+	}
+
+	/**
+ 	* @return the raw controller throttle
+	*/
+	public double getThrottleCmd() 
+	{
+		// -1.0 (up / forward)
+		//  ^
+		//  |
+		//  v 
+		// 1.0 (down / reverse)
+		return (_driverController.leftStick.getY() * 1.0);
+	}
+
+	/**
+ 	* @return the raw turn throttle
+	*/
+	public double getTurnCmd() 
+	{
+		return (_driverController.rightStick.getX() * 1.0);
 	}
 }
 

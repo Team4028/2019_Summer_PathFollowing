@@ -12,30 +12,19 @@ import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import java.io.IOException;
-
-import com.ctre.phoenix.motorcontrol.NeutralMode;
-
-import edu.wpi.first.wpilibj.AnalogGyro;
-import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
-import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.TimedRobot;
+import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
 import frc.robot.commands.chassis.DriveFollowPathOpenLoop;
+import frc.robot.commands.chassis.DriveWithControllers;
+import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
-import frc.robot.util.EncoderFollowerPIDGainsBE;
+
 import frc.robot.util.GeneralUtilities;
 import frc.robot.util.LogDataBE;
 import frc.robot.ux.OI;
-
-import jaci.pathfinder.Pathfinder;
-import jaci.pathfinder.PathfinderFRC;
-import jaci.pathfinder.Trajectory;
-import jaci.pathfinder.Trajectory.Segment;
-import jaci.pathfinder.followers.EncoderFollower;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -60,29 +49,10 @@ public class Robot extends TimedRobot {
 
   // class level working variables
   public static DataLogger _DataLogger = null;
+
   private String _buildMsg = "?";
+  private Command _autonomousCommand = null;
 
-  private Command _autonomousCommand;
-  // =====================================================
-  // name of this path
-  // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
-  // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
-  // https://www.chiefdelphi.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
-  private static final String k_path_name = "Straight_v1"; //
-
-  private EncoderFollower _left_follower;
-  private EncoderFollower _right_follower;
-
-  private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-      = new EncoderFollowerPIDGainsBE(0.15, 0.0, 1.0 / 70, 0.0);
-
-
-  private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-      = new EncoderFollowerPIDGainsBE(0.15, 0.0, 1.0 / 70, 0.0);
-
-  private Notifier _follower_notifier;
-  private boolean _isNotifierRunning = false;
-  private double _notifierTimeInterval = 0;
   /**
    * This function is run when the robot is first started up and should be used
    * for any initialization code.
@@ -93,26 +63,6 @@ public class Robot extends TimedRobot {
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
 
     _navX.zeroYaw();
-
-    //Trajectory left_trajectory = null;
-    //Trajectory right_trajectory = null;
-    //try {
-      // /home/lvuser/deploy/paths <== folder on the roboRIO
-      // generated path names are reversed, bug fixed in v2019.3.1
-      //left_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".right");
-      //right_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".left");
-
-      //_notifierTimeInterval = left_trajectory.get(0).dt;
-    //} catch (IOException e) {
-      //e.printStackTrace();
-    //}
-
-    //_left_follower = new EncoderFollower(left_trajectory);
-    //_right_follower = new EncoderFollower(right_trajectory);
-    
-    //_DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging
-    //_follower_notifier = new Notifier(this::followPath);
-    //_isNotifierRunning = false;
   }
 
   /********************************************************************************************
@@ -133,128 +83,19 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     _Chassis.zeroSensors();
-    _Chassis.stop(true);
-    //_Chassis.setBrakeMode(NeutralMode.Brake);
+    //_Chassis.setBrakeMode(NeutralMode.Brake)
 
     _navX.zeroYaw();
 
-    //_DataLogger = GeneralUtilities.setupLogging("Auton"); // init data logging
+    // init data logging
+    _DataLogger = GeneralUtilities.setupLogging("Auton"); 
 
-    //Trajectory left_trajectory = null;
-    //Trajectory right_trajectory = null;
-    //try {
-      // /home/lvuser/deploy/paths <== folder on the roboRIO
-      // bug fixed in v2019.3.1
-      //left_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".left");
-      //left_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".right");
-      //right_trajectory = PathfinderFRC.getTrajectory(k_path_name + ".right");
-      //right_trajectory = PathfinderFRC.getTrajectory("output/" + k_path_name + ".left");
-    //} catch (IOException e) {
-      //e.printStackTrace();
-    //}
+    // setup auton command
+    _autonomousCommand = new DriveFollowPathClosedLoop("Straight_v3");
 
-    //_left_follower = new EncoderFollower(left_trajectory);
-    //_right_follower = new EncoderFollower(right_trajectory);
-
-    /*
-    Equation: output = (kP * error) + (kD * diff(error)/dt) + (kV * vel) + (kA * accel)
-
-    kP -> Proportional gain. Units: %/m. I typically start off with this at around 0.8-1.2, using a standard AM drivebase.
-
-    kI -> pathfinder ignores kI
-
-    kD -> Derivative gain. Units: %/(m/s). I’ll typically only tune this if tracking is bad, 
-          so usually I’ll keep it at 0 unless I have a reason to change it. 
-          You can think of it like a way to increase the value that the kV term puts out, 
-          which can help in the lower velocity ranges if your acceleration is bad.
-
-    kV -> Velocity Feed-forward gain. Units: %/(m/s). This should be max_%/max_vel (i.e. 1 / max_vel). 
-          This is used to give the loop some kind of knowledge about what its velocity should be. 
-          As Oblarg mentioned, in other implementations (i.e. Talon SRX) this will be calculated differently.
-
-    kA -> Acceleration Feed-forward gain. Units: %/(m/s/s). 
-          I typically leave this value at 0, but you can adjust it if you’re unhappy with the speed of your robot 
-          and need more power in the acceleration phase(s) of the loop. This value can also be pretty dangerous if you tune it too high.
-    */
-      /*
-    _left_follower.configureEncoder((int)_Chassis.getLeftEncoderPositionInNU(), 
-                                    (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, 
-                                    Chassis.DRIVE_WHEEL_DIAMETER_IN);
-
-    _left_follower.configurePIDVA(_leftFollowerGains.KP, 
-                                  _leftFollowerGains.KI, 
-                                  _leftFollowerGains.KD, 
-                                  _leftFollowerGains.KV, 
-                                  _leftFollowerGains.KA);
-
-    _right_follower.configureEncoder((int)_Chassis.getRightEncoderPositionInNU(), 
-                                      (int)Chassis.ENCODER_COUNTS_PER_WHEEL_REV, 
-                                      Chassis.DRIVE_WHEEL_DIAMETER_IN);
-
-    _right_follower.configurePIDVA(_rightFollowerGains.KP, 
-                                    _rightFollowerGains.KI, 
-                                    _rightFollowerGains.KD, 
-                                    _rightFollowerGains.KV, 
-                                    _rightFollowerGains.KA);
-    
-    //_Chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_LS);
-
-    // setup notifier thread that fires on the interval in the path file(s)
-    _follower_notifier = new Notifier(this::followPath);
-    _follower_notifier.startPeriodic(_notifierTimeInterval);
-    _isNotifierRunning = true;
-      */
-    _autonomousCommand = new DriveFollowPathOpenLoop("Straight_v1");
-    // schedule the autonomous command (example)
+    // schedule the autonomous command
     if (_autonomousCommand != null) {
       _autonomousCommand.start();
-    }
-  }
-
-  // This is the command called in the notifier loop
-  private void followPath() 
-  {
-    if(!_isNotifierRunning)
-    {
-      return;
-    }
-
-    if (_left_follower.isFinished() || _right_follower.isFinished()) 
-    {
-      // stop the notifier thread
-      _follower_notifier.stop();
-      _isNotifierRunning = false;
-      _Chassis.stop(false);
-      System.out.println("Left: " + _left_follower.isFinished() );
-      System.out.println("Rgt: " + _right_follower.isFinished() );
-    } 
-    else 
-    {
-      // NOTE: calc result is target %output!!!
-      double left_speed = _left_follower.calculate((int)_Chassis.getLeftEncoderPositionInNU());
-      double right_speed = _right_follower.calculate((int)_Chassis.getRightEncoderPositionInNU());
-
-      //if(left_speed > 0 && left_speed < .1)
-      //{
-      //  left_speed = 0.1;
-      //}
-      //if(right_speed > 0 && right_speed < .1)
-      //{
-      //  right_speed = 0.1;
-      //}
-
-      // If you have a typical gyro, then it gives a + reading for a clockwise rotation \
-      // where Pathfinder expects this to be a negative gyro direction.
-      double heading = _navX.getPathfinderYaw();
-      double desired_heading = Pathfinder.r2d(_left_follower.getHeading());
-      double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
-      double turn =  0.8 * (-1.0/80.0) * heading_difference;
-
-      //_Chassis.setClosedLoopVelocityCmd(left_speed + turn, right_speed - turn);
-      _Chassis.setOpenLoopVelocityCmd(left_speed + turn, right_speed - turn);
-
-      // if we are running the notifier loop, sync logging to that thread
-      this.logAllData();
     }
   }
 
@@ -262,7 +103,9 @@ public class Robot extends TimedRobot {
    * This function is called periodically during autonomous.
    */
   @Override
-  public void autonomousPeriodic() {
+  public void autonomousPeriodic() 
+  {
+    // run scheduler
     Scheduler.getInstance().run();
   }
 
@@ -271,18 +114,13 @@ public class Robot extends TimedRobot {
    ********************************************************************************************/
 
   @Override
-  public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-    //_follower_notifier.stop();
-    //_left_motor.set(0);
-    //_right_motor.set(0);
+  public void teleopInit()
+  {    
+    // start honoring joysticks
+    Command driveWJoyStick = new DriveWithControllers();
+    driveWJoyStick.start();
 
-    _Chassis.stop(true);
-    _navX.zeroYaw();
-    
+    // init data logging
     _DataLogger = GeneralUtilities.setupLogging("Telop"); // init data logging	
   }
 
@@ -291,6 +129,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() 
   {
+    // run scheduler
     Scheduler.getInstance().run();  
   }
 
@@ -321,6 +160,7 @@ public class Robot extends TimedRobot {
   @Override
   public void disabledInit() 
   {
+    // remove all currently running commands
     Scheduler.getInstance().removeAll();
 
     // clear commands in all motor controllers
@@ -350,10 +190,8 @@ public class Robot extends TimedRobot {
     // ============= Refresh Dashboard ============= 
     this.outputAllToDashboard();
 
-    // log data from here if notifier is not running
-    if(!isDisabled() && (_DataLogger != null) && !_isNotifierRunning)
+    if(!isDisabled() && (_DataLogger != null) )
     {
-      // ============= Optionally Log Data =============
       this.logAllData();
     }
   }
@@ -387,43 +225,12 @@ public class Robot extends TimedRobot {
         // ----------------------------------------------
         if(_Chassis != null)              { _Chassis.updateLogData(logData); }
         if(_navX != null)                 { _navX.updateLogData(logData); }
-        if(_isNotifierRunning)            { this.updateLogData(logData); }
+        if(_autonomousCommand != null && _autonomousCommand instanceof IBeakSquadDataPublisher)  
+                                          { 
+                                            ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(logData); 
+                                          }
 
 	    	_DataLogger.WriteDataLine(logData);
     	}
   }
-  
-  private void updateLogData(LogDataBE logData) 
-  {
-    if (!_left_follower.isFinished()) 
-    {
-      String leftGains = Double.toString(_leftFollowerGains.KP) + " | " + 
-                          Double.toString(_leftFollowerGains.KI) + " | " + 
-                          Double.toString(_leftFollowerGains.KD) + " | " + 
-                          Double.toString(_leftFollowerGains.KV) + " | " + 
-                          Double.toString(_leftFollowerGains.KA);
-      logData.AddData("LeftFollower:Gains", leftGains);
-
-      Segment currentLeftSegment = _left_follower.getSegment();
-      logData.AddData("LeftFollower:SegmentPos", Double.toString(currentLeftSegment.position));
-      logData.AddData("LeftFollower:SegmentVel", Double.toString(currentLeftSegment.velocity));
-      logData.AddData("LeftFollower:SegmentAccel", Double.toString(currentLeftSegment.acceleration));
-    }
-
-    if (!_right_follower.isFinished()) 
-    {
-      String rightGains = Double.toString(_rightFollowerGains.KP) + " | " + 
-                          Double.toString(_rightFollowerGains.KI) + " | " + 
-                          Double.toString(_rightFollowerGains.KD) + " | " + 
-                          Double.toString(_rightFollowerGains.KV) + " | " + 
-                          Double.toString(_rightFollowerGains.KA);
-      logData.AddData("RgtFollower:Gains", rightGains);
-      
-      Segment currentRightSegment = _right_follower.getSegment();
-      logData.AddData("RgtFollower:SegmentPos", Double.toString(currentRightSegment.position));
-      logData.AddData("RgtFollower:SegmentVel", Double.toString(currentRightSegment.velocity));
-      logData.AddData("RgtFollower:SegmentAccel", Double.toString(currentRightSegment.acceleration));
-    }
-  }
-
 }

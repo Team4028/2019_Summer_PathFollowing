@@ -95,6 +95,10 @@ public class DriveFollowPathOpenLoop extends Command {
     _notifier.stop();
   }
 
+  // name of this path
+  // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
+  // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
+  // https://www.chiefdelphi.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
   private void importPath(String pathName) {
     try {
       // Read the path files from the file system
@@ -116,6 +120,7 @@ public class DriveFollowPathOpenLoop extends Command {
     // If either of the followers have finished their paths we need to stop the notifier
     if (_leftFollower.isFinished() || _rightFollower.isFinished()) {
       _notifier.stop();
+      _chassis.stop(false);
       return;
     } 
     
@@ -131,5 +136,15 @@ public class DriveFollowPathOpenLoop extends Command {
 
     // Send the % outputs to the drivetrain
     _chassis.setOpenLoopVelocityCmd(left_speed + turn, right_speed - turn);
+  }
+
+  public DistanceFollower getLeftFollower()
+  { 
+    return _leftFollower;
+  }
+
+  private DistanceFollower getRightFollower()
+  {
+    return _rightFollower;
   }
 }
