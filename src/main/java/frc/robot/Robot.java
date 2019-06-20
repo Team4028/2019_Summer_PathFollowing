@@ -11,10 +11,10 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
 import edu.wpi.first.wpilibj.RobotController;
-import edu.wpi.first.wpilibj.TimedRobot;
+
 import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
+import frc.robot.commands.chassis.DriveFollowPathClosedLoopV2;
 import frc.robot.commands.chassis.DriveFollowPathOpenLoop;
 import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
@@ -52,6 +52,7 @@ public class Robot extends TimedRobot {
 
   private String _buildMsg = "?";
   private Command _autonomousCommand = null;
+  private boolean _isNotifierRunning = false;
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -91,11 +92,12 @@ public class Robot extends TimedRobot {
     _DataLogger = GeneralUtilities.setupLogging("Auton"); 
 
     // setup auton command
-    _autonomousCommand = new DriveFollowPathClosedLoop("Straight_v3");
+    _autonomousCommand = new DriveFollowPathClosedLoop("Straight_v3", this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
       _autonomousCommand.start();
+      _isNotifierRunning = true;
     }
   }
 
@@ -165,6 +167,12 @@ public class Robot extends TimedRobot {
 
     // clear commands in all motor controllers
     _Chassis.stop(false);
+
+    _isNotifierRunning = false;
+
+    if(_DataLogger != null){
+      _DataLogger.close();
+    }
   }
 
   @Override
@@ -190,7 +198,7 @@ public class Robot extends TimedRobot {
     // ============= Refresh Dashboard ============= 
     this.outputAllToDashboard();
 
-    if(!isDisabled() && (_DataLogger != null) )
+    if(!isDisabled() && (_DataLogger != null) && !_isNotifierRunning )
     {
       this.logAllData();
     }
@@ -211,8 +219,9 @@ public class Robot extends TimedRobot {
 	}
 
 	/** Method for Logging Data to the USB Stick plugged into the RoboRio */
-  private void logAllData() 
+  public void logAllData() 
   { 
+    //TODO: Fix ~1sec delay on DataLogger
 		// always call this 1st to calc drive metrics
       if(_DataLogger != null) 
       {    	

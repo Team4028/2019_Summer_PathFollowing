@@ -114,7 +114,7 @@ public class DataLogger {
 							+ dataToLog.BuildTSVData());
 		}
 
-		_writer.flush();
+		//_writer.flush();
 		
 		// save last scan dt so we can calc delta on next scan
 		//_lastScanDTMS = System.currentTimeMillis();
@@ -123,9 +123,10 @@ public class DataLogger {
     }
         
     public void close() {
+		_writer.flush();
     	_writer.close(); // close the file
-    }
-    
+	}
+	   
 	//============================================================================================
 	// Property Accessors follow
 	//============================================================================================

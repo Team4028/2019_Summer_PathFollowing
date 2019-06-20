@@ -11,7 +11,6 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
-import frc.robot.util.DataLogger;
 
 public class DriveClosedLoopVelocity extends Command {
 

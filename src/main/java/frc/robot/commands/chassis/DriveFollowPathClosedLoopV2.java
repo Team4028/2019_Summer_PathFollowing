@@ -11,6 +11,10 @@ import static jaci.pathfinder.Pathfinder.r2d;
 
 import java.io.IOException;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
@@ -26,7 +30,7 @@ import jaci.pathfinder.Trajectory.Segment;
 import jaci.pathfinder.followers.DistanceFollower;
 
 // Command to Drive following a Path
-public class DriveFollowPathClosedLoop extends Command implements IBeakSquadDataPublisher {
+public class DriveFollowPathClosedLoopV2 extends Command implements IBeakSquadDataPublisher {
 
     private Chassis _chassis = Robot._Chassis;
     private GyroNavX _navX = Robot._navX;
@@ -34,7 +38,9 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     private DistanceFollower _leftFollower;
     private DistanceFollower _rightFollower;
 
-    private Notifier _notifier = new Notifier(this::followPath);
+    //private Notifier _notifier = new Notifier(this::followPath);
+    ScheduledExecutorService service = Executors
+                    .newSingleThreadScheduledExecutor();
 
     // The starting positions of the left and right sides of the drivetrain
     private double _leftStartingDistance;
@@ -42,6 +48,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
 
     private Runnable _loggingMethod;
     private double _period;
+
     private double _time = 0;
 
     /*
@@ -71,7 +78,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
             = new EncoderFollowerPIDGainsBE(1.0, 0.0, 1.0, 0.0);
 
     // constructor
-    public DriveFollowPathClosedLoop(String pathName, Runnable loggingMethod) {
+    public DriveFollowPathClosedLoopV2(String pathName, Runnable loggingMethod) {
         requires(_chassis);
 
         importPath(pathName);
@@ -104,7 +111,18 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         _chassis.setActivePIDConstantsSlot(1);
 
         // Start running the path
-        _notifier.startPeriodic(_period);
+        //_notifier.startPeriodic(_period);
+        Runnable runnable = new Runnable() {
+          public void run() {
+            followPath();
+            long currentTimeInMS = RobotController.getFPGATime() / 1000;
+            //long currentTimeInMS2 = RobotController.getFPGATime() / 1000;
+            System.out.println(currentTimeInMS - _time);
+            _time = currentTimeInMS;
+          }
+        };
+
+        service.scheduleAtFixedRate(runnable, 0, 10, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -114,12 +132,12 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
 
     @Override
     protected void end() {
-        _notifier.stop();
+        //_notifier.stop();
     }
 
     @Override
     protected void interrupted() {
-        _notifier.stop();
+        //_notifier.stop();
     }
 
     // name of this path
@@ -147,7 +165,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         // If either of the followers have finished their paths we need to stop the
         // notifier
         if (_leftFollower.isFinished() || _rightFollower.isFinished()) {
-            _notifier.stop();
+           // _notifier.stop();
             _chassis.stop(false);
             return;
         }
@@ -157,11 +175,6 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         {
             _loggingMethod.run();
         }
-
-        long currentTimeInMS = RobotController.getFPGATime() / 1000;
-        //long currentTimeInMS2 = RobotController.getFPGATime() / 1000;
-        System.out.println(currentTimeInMS - _time);
-        _time = currentTimeInMS;
 
         // Get the left and right power output from the distance calculator
         double left_speed = 
