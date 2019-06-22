@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
 
 import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
@@ -23,7 +24,7 @@ import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
 
 import frc.robot.util.GeneralUtilities;
-import frc.robot.util.LogDataBE;
+import frc.robot.entities.LogDataBE;
 import frc.robot.ux.OI;
 
 /**
@@ -53,6 +54,7 @@ public class Robot extends TimedRobot {
   private String _buildMsg = "?";
   private Command _autonomousCommand = null;
   private boolean _isNotifierRunning = false;
+  private LogDataBE _logData = new LogDataBE();
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -61,9 +63,14 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() 
   {
+    // write the overall robot dashboard info
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
+    SmartDashboard.putString("Robot Build", _buildMsg);
 
     _navX.zeroYaw();
+
+    // https://www.chiefdelphi.com/t/improbable-java-slow-down-in-combining-doubles-and-strings/350331/17
+    String forceDoubleToLoad = Double.toString(1234.56);
   }
 
   /********************************************************************************************
@@ -83,13 +90,12 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
+    // zero sensors before auton
     _Chassis.zeroSensors();
-    //_Chassis.setBrakeMode(NeutralMode.Brake)
-
     _navX.zeroYaw();
 
     // init data logging
-    _DataLogger = GeneralUtilities.setupLogging("Auton"); 
+    _DataLogger = DataLogger.setupLogging("Auton"); 
 
     // setup auton command
     _autonomousCommand = new DriveFollowPathClosedLoop("Straight_v3", this::logAllData);
@@ -107,7 +113,7 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() 
   {
-    // run scheduler
+    // run the command scheduler
     Scheduler.getInstance().run();
   }
 
@@ -123,7 +129,7 @@ public class Robot extends TimedRobot {
     driveWJoyStick.start();
 
     // init data logging
-    _DataLogger = GeneralUtilities.setupLogging("Telop"); // init data logging	
+    _DataLogger = DataLogger.setupLogging("Telop"); // init data logging	
   }
 
    /* This function is called periodically during teleop mode.
@@ -170,6 +176,7 @@ public class Robot extends TimedRobot {
 
     _isNotifierRunning = false;
 
+    // optionally tell Datalogger to flush its data out to the logging destination
     if(_DataLogger != null){
       _DataLogger.close();
     }
@@ -198,7 +205,8 @@ public class Robot extends TimedRobot {
     // ============= Refresh Dashboard ============= 
     this.outputAllToDashboard();
 
-    if(!isDisabled() && (_DataLogger != null) && !_isNotifierRunning )
+    // if a notifier is running, we will call the logAllData method from inside the command so that we sync to the notifier period
+    if(!this.isDisabled() && (_DataLogger != null) && !_isNotifierRunning )
     {
       this.logAllData();
     }
@@ -213,33 +221,29 @@ public class Robot extends TimedRobot {
       // ----------------------------------------------
       if(_Chassis != null)              { _Chassis.updateDashboard(); }
       if(_navX != null)                 { _navX.updateDashboard(); }
-
-      // write the overall robot dashboard info
-      SmartDashboard.putString("Robot Build", _buildMsg);
 	}
 
 	/** Method for Logging Data to the USB Stick plugged into the RoboRio */
   public void logAllData() 
   { 
-    //TODO: Fix ~1sec delay on DataLogger
-		// always call this 1st to calc drive metrics
+    // TODO: Fix ~1sec delay on DataLogger
       if(_DataLogger != null) 
       {    	
         // create a new, empty logging class
-        long currentTimeInMS = RobotController.getFPGATime() / 1000;
-        LogDataBE logData = new LogDataBE(currentTimeInMS);
+        _logData.InitData(RobotController.getFPGATime() / 1000);
         
         // ----------------------------------------------
         // ask each subsystem that exists to add its data
         // ----------------------------------------------
-        if(_Chassis != null)              { _Chassis.updateLogData(logData); }
-        if(_navX != null)                 { _navX.updateLogData(logData); }
-        if(_autonomousCommand != null && _autonomousCommand instanceof IBeakSquadDataPublisher)  
+        if(_Chassis != null)              { _Chassis.updateLogData(_logData); }
+        if(_navX != null)                 { _navX.updateLogData(_logData); }
+        if((_autonomousCommand != null) 
+              && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
                                           { 
-                                            ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(logData); 
+                                            ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData); 
                                           }
 
-	    	_DataLogger.WriteDataLine(logData);
+	    	_DataLogger.WriteDataLine(_logData);
     	}
   }
 }

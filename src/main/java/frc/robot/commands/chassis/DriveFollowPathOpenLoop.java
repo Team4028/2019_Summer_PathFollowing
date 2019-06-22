@@ -17,14 +17,15 @@ import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
-import frc.robot.util.EncoderFollowerPIDGainsBE;
+import frc.robot.entities.EncoderFollowerPIDGainsBE;
 import jaci.pathfinder.PathfinderFRC;
 import jaci.pathfinder.Trajectory;
 import jaci.pathfinder.followers.DistanceFollower;
 
-// Command to Drive following a Path
+// Command to Drive following a Path using %VBus Loop on the TalonSRX and Notifier for the RoboRio loop
 public class DriveFollowPathOpenLoop extends Command {
 
+  // working variables
   private Chassis _chassis = Robot._Chassis;
   private GyroNavX _navX = Robot._navX;
 
@@ -47,9 +48,13 @@ public class DriveFollowPathOpenLoop extends Command {
         = new EncoderFollowerPIDGainsBE(0.15, 0.0, 1.0 / 70, 0.0);
         //  = new EncoderFollowerPIDGainsBE(1.75, 0.25, 1.0 / Chassis.MAX_VEL_IN_PER_SEC, 0);
 
-  // constructor
+  // ======================================================================================
+  // constructor  
+  // ======================================================================================
   public DriveFollowPathOpenLoop(String pathName) {
+    // Use requires() here to declare subsystem dependencies
     requires(_chassis);
+    setInterruptible(true);
 
     importPath(pathName);
 

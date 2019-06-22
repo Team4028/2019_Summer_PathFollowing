@@ -5,26 +5,28 @@
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
 
-package frc.robot.util;
+package frc.robot.entities;
 
 /**
- * Class to hold gains for EncoderFollower
- * KI commented out since I Gain is not supported
+ * This class holds a set of PID Gain constants
  */
-public class EncoderFollowerPIDGainsBE 
+public class MotorCtrPIDGainsBE 
 {
-    public final double KP;
+	public final double KP;
 	public final double KI;
 	public final double KD;
-	public final double KV;
-	public final double KA;
+	public final double KF;
+	public final int KMaxI;
+	public final double KPeakOutput;
 
-    public EncoderFollowerPIDGainsBE(double _kP, double _kD, double _kV, double _kA)
+	// constructor(s)
+    public MotorCtrPIDGainsBE(double _kP, double _kI, double _kD, double _kF, int _kMaxI, double _kPeakOutput)
     {
 		KP = _kP;
-		KI = 0;
+		KI = _kI;
 		KD = _kD;
-		KV = _kV;
-		KA = _kA;
+		KF = _kF;
+		KMaxI = _kMaxI;
+		KPeakOutput = _kPeakOutput;
 	}
 }

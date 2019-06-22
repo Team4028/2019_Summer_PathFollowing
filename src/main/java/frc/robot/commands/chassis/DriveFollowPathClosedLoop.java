@@ -14,73 +14,88 @@ import java.io.IOException;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
+
 import frc.robot.Robot;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
-import frc.robot.util.EncoderFollowerPIDGainsBE;
-import frc.robot.util.LogDataBE;
+import frc.robot.entities.EncoderFollowerPIDGainsBE;
+import frc.robot.entities.LogDataBE;
+import frc.robot.util.GeneralUtilities;
+
 import jaci.pathfinder.PathfinderFRC;
 import jaci.pathfinder.Trajectory;
 import jaci.pathfinder.Trajectory.Segment;
 import jaci.pathfinder.followers.DistanceFollower;
 
-// Command to Drive following a Path
+// Command to Drive following a Path using Velocity Closed Loop on the TalonSRX and Notifier for the RoboRio loop
 public class DriveFollowPathClosedLoop extends Command implements IBeakSquadDataPublisher {
 
+    // working variables
     private Chassis _chassis = Robot._Chassis;
     private GyroNavX _navX = Robot._navX;
 
     private DistanceFollower _leftFollower;
     private DistanceFollower _rightFollower;
 
+    // create notifier that will 
     private Notifier _notifier = new Notifier(this::followPath);
 
     // The starting positions of the left and right sides of the drivetrain
-    private double _leftStartingDistance;
-    private double _rightStartingDistance;
+    private double _leftStartingDistance = 0;
+    private double _rightStartingDistance = 0;
 
-    private Runnable _loggingMethod;
-    private double _period;
-    private double _time = 0;
+    private Runnable _loggingMethodDelegate;
+    private double _loopPeriodInMS = 0;
+    private double _lastLoopTimeInMS = 0;
+
+    private StringBuilder _sb = new StringBuilder();
 
     /*
-    Equation: output = (kP * error) + (kD * diff(error)/dt) + (kV * vel) + (kA * accel)
-
-    kP -> Proportional gain. Units: %/m. I typically start off with this at around 0.8-1.2, using a standard AM drivebase.
-
-    kI -> pathfinder ignores kI
-
-    kD -> Derivative gain. Units: %/(m/s). I’ll typically only tune this if tracking is bad, 
-          so usually I’ll keep it at 0 unless I have a reason to change it. 
-          You can think of it like a way to increase the value that the kV term puts out, 
-          which can help in the lower velocity ranges if your acceleration is bad.
-
-    kV -> Velocity Feed-forward gain. Units: %/(m/s). This should be max_%/max_vel (i.e. 1 / max_vel). 
-          This is used to give the loop some kind of knowledge about what its velocity should be. 
-          As Oblarg mentioned, in other implementations (i.e. Talon SRX) this will be calculated differently.
-
-    kA -> Acceleration Feed-forward gain. Units: %/(m/s/s). 
-          I typically leave this value at 0, but you can adjust it if you’re unhappy with the speed of your robot 
-          and need more power in the acceleration phase(s) of the loop. This value can also be pretty dangerous if you tune it too high.
-    */
+     * Equation: output = (kP * error) + (kD * diff(error)/dt) + (kV * vel) + (kA * accel)
+     * 
+     * kP -> Proportional gain. Units: %/m. I typically start off with this at
+     * around 0.8-1.2, using a standard AM drivebase.
+     * 
+     * kI -> pathfinder ignores kI
+     * 
+     * kD -> Derivative gain. Units: %/(m/s). Iâ€™ll typically only tune this if
+     * tracking is bad, so usually Iâ€™ll keep it at 0 unless I have a reason to
+     * change it. You can think of it like a way to increase the value that the kV
+     * term puts out, which can help in the lower velocity ranges if your
+     * acceleration is bad.
+     * 
+     * kV -> Velocity Feed-forward gain. Units: %/(m/s). This should be
+     * max_%/max_vel (i.e. 1 / max_vel). This is used to give the loop some kind of
+     * knowledge about what its velocity should be. As Oblarg mentioned, in other
+     * implementations (i.e. Talon SRX) this will be calculated differently.
+     * 
+     * kA -> Acceleration Feed-forward gain. Units: %/(m/s/s). I typically leave
+     * this value at 0, but you can adjust it if youâ€™re unhappy with the speed of
+     * your robot and need more power in the acceleration phase(s) of the loop. This
+     * value can also be pretty dangerous if you tune it too high.
+     */
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-            = new EncoderFollowerPIDGainsBE(1.0, 0.0, 1.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 1.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-            = new EncoderFollowerPIDGainsBE(1.0, 0.0, 1.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 1.0, 0.0);
 
+    // ======================================================================================
     // constructor
-    public DriveFollowPathClosedLoop(String pathName, Runnable loggingMethod) {
+    // ======================================================================================
+    public DriveFollowPathClosedLoop(String pathName, Runnable loggingMethodDelegate) {
+        // Use requires() here to declare subsystem dependencies
         requires(_chassis);
+        setInterruptible(true);
 
         importPath(pathName);
 
         _leftFollower.configurePIDVA(_leftFollowerGains.KP, 
                                         _leftFollowerGains.KI, 
                                         _leftFollowerGains.KD,
-                                        _leftFollowerGains.KV,
-                                         _leftFollowerGains.KA);
+                                        _leftFollowerGains.KV, 
+                                        _leftFollowerGains.KA);
 
         _rightFollower.configurePIDVA(_rightFollowerGains.KP, 
                                         _rightFollowerGains.KI, 
@@ -88,7 +103,8 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
                                         _rightFollowerGains.KV, 
                                         _rightFollowerGains.KA);
 
-        _loggingMethod = loggingMethod;
+        // save a local reference to the delegate to the logging method
+        _loggingMethodDelegate = loggingMethodDelegate;
     }
 
     @Override
@@ -101,10 +117,14 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         _leftFollower.reset();
         _rightFollower.reset();
 
+        // set chassis pid constants
         _chassis.setActivePIDConstantsSlot(1);
 
+        // initialize last loop timestamp
+        _lastLoopTimeInMS = RobotController.getFPGATime() / 1000.0;
+
         // Start running the path
-        _notifier.startPeriodic(_period);
+        _notifier.startPeriodic(_loopPeriodInMS);
     }
 
     @Override
@@ -112,14 +132,18 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         return _leftFollower.isFinished() || _rightFollower.isFinished();
     }
 
+    // Commmand ended normally (typically because isFinished returns true)
     @Override
     protected void end() {
         _notifier.stop();
+        _chassis.stop(false);
     }
 
+    //
     @Override
     protected void interrupted() {
         _notifier.stop();
+        _chassis.stop(false);
     }
 
     // name of this path
@@ -129,6 +153,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     private void importPath(String pathName) {
         try {
             // Read the path files from the file system
+            // Note: Bug in this version of PathFollower, generated paths are in wrong filename
             Trajectory leftTrajectory = PathfinderFRC.getTrajectory("output/" + pathName + ".right");
             Trajectory rightTrajectory = PathfinderFRC.getTrajectory("output/" + pathName + ".left");
 
@@ -136,7 +161,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
             _leftFollower = new DistanceFollower(leftTrajectory);
             _rightFollower = new DistanceFollower(rightTrajectory);
 
-            _period = leftTrajectory.get(0).dt;
+            _loopPeriodInMS = leftTrajectory.get(0).dt;
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -144,24 +169,16 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     }
 
     private void followPath() {
-        // If either of the followers have finished their paths we need to stop the
-        // notifier
-        if (_leftFollower.isFinished() || _rightFollower.isFinished()) {
-            _notifier.stop();
-            _chassis.stop(false);
-            return;
+
+        // if a logging method delegate was passed in, call it to log the current values
+        //  likely the result of the provious loop
+        if (_loggingMethodDelegate != null) {
+            _loggingMethodDelegate.run();
         }
 
-        // if a logging method delegate was passed in, call it
-        if(_loggingMethod != null)
-        {
-            _loggingMethod.run();
-        }
-
-        long currentTimeInMS = RobotController.getFPGATime() / 1000;
-        //long currentTimeInMS2 = RobotController.getFPGATime() / 1000;
-        System.out.println(currentTimeInMS - _time);
-        _time = currentTimeInMS;
+        double currentTimeInMS = RobotController.getFPGATime() / 1000.0;
+        System.out.println(GeneralUtilities.roundDouble(currentTimeInMS - _lastLoopTimeInMS, 1));
+        _lastLoopTimeInMS = currentTimeInMS;
 
         // Get the left and right power output from the distance calculator
         double left_speed = 
@@ -183,32 +200,44 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     public void updateLogData(LogDataBE logData) {
         if (!_leftFollower.isFinished()) 
         {
-          String leftGains = Double.toString(_leftFollowerGains.KP) + " | " + 
-                              Double.toString(_leftFollowerGains.KI) + " | " + 
-                              Double.toString(_leftFollowerGains.KD) + " | " + 
-                              Double.toString(_leftFollowerGains.KV) + " | " + 
-                              Double.toString(_leftFollowerGains.KA);
-          logData.AddData("LeftFollower:Gains", leftGains);
+            _sb.setLength(0);
+            _sb.append(Double.toString(_leftFollowerGains.KP));
+            _sb.append(" | ");
+            _sb.append(Double.toString(_leftFollowerGains.KI)); 
+            _sb.append(" | ");
+            _sb.append(Double.toString(_leftFollowerGains.KD)); 
+            _sb.append(" | ");
+            _sb.append(Double.toString(_leftFollowerGains.KV)); 
+            _sb.append(" | ");
+            _sb.append(Double.toString(_leftFollowerGains.KA));
+
+            logData.AddData("LeftFollower:Gains", _sb.toString());
     
-          Segment currentLeftSegment = _leftFollower.getSegment();
-          logData.AddData("LeftFollower:SegmentPos", Double.toString(currentLeftSegment.position));
-          logData.AddData("LeftFollower:SegmentVel", Double.toString(currentLeftSegment.velocity));
-          logData.AddData("LeftFollower:SegmentAccel", Double.toString(currentLeftSegment.acceleration));
+            Segment currentLeftSegment = _leftFollower.getSegment();
+            logData.AddData("LeftFollower:SegmentPos", Double.toString(currentLeftSegment.position));
+            logData.AddData("LeftFollower:SegmentVel", Double.toString(currentLeftSegment.velocity));
+            logData.AddData("LeftFollower:SegmentAccel", Double.toString(currentLeftSegment.acceleration));
         }
     
         if (!_rightFollower.isFinished()) 
         {
-          String rightGains = Double.toString(_rightFollowerGains.KP) + " | " + 
-                              Double.toString(_rightFollowerGains.KI) + " | " + 
-                              Double.toString(_rightFollowerGains.KD) + " | " + 
-                              Double.toString(_rightFollowerGains.KV) + " | " + 
-                              Double.toString(_rightFollowerGains.KA);
-          logData.AddData("RgtFollower:Gains", rightGains);
+            _sb.setLength(0);
+            _sb.append(Double.toString(_rightFollowerGains.KP));
+            _sb.append(" | ");
+            _sb.append(Double.toString(_rightFollowerGains.KI)); 
+            _sb.append(" | ");
+            _sb.append(Double.toString(_rightFollowerGains.KD)); 
+            _sb.append(" | ");
+            _sb.append(Double.toString(_rightFollowerGains.KV)); 
+            _sb.append(" | ");
+            _sb.append(Double.toString(_rightFollowerGains.KA));
+
+            logData.AddData("RgtFollower:Gains", _sb.toString());
           
-          Segment currentRightSegment = _rightFollower.getSegment();
-          logData.AddData("RgtFollower:SegmentPos", Double.toString(currentRightSegment.position));
-          logData.AddData("RgtFollower:SegmentVel", Double.toString(currentRightSegment.velocity));
-          logData.AddData("RgtFollower:SegmentAccel", Double.toString(currentRightSegment.acceleration));
+            Segment currentRightSegment = _rightFollower.getSegment();
+            logData.AddData("RgtFollower:SegmentPos", Double.toString(currentRightSegment.position));
+            logData.AddData("RgtFollower:SegmentVel", Double.toString(currentRightSegment.velocity));
+            logData.AddData("RgtFollower:SegmentAccel", Double.toString(currentRightSegment.acceleration));
         }
     }
 

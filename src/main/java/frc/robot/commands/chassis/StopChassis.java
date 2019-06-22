@@ -11,12 +11,18 @@ import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
 
+// Command to Stop the Chassis
 public class StopChassis extends Command 
 {
+  // working variables
   private Chassis _chassis = Robot._Chassis;
 
+  // ======================================================================================
+  // constructor  
+  // ======================================================================================
   public StopChassis() 
   {
+    // Use requires() here to declare subsystem dependencies
     requires(_chassis);
     setInterruptible(true);
   }

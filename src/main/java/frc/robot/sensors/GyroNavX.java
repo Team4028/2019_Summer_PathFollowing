@@ -13,7 +13,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.RobotMap;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
-import frc.robot.util.LogDataBE;
+import frc.robot.entities.LogDataBE;
 
 /**
  * This class exposes the OnBoard Navigation Sensor 

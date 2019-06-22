@@ -6,15 +6,20 @@ import frc.robot.subsystems.Chassis;
 import frc.robot.util.BeakXboxController.Thumbstick;
 import frc.robot.ux.OI;
 
+// Command to Drive using Joy Sticks
 public class DriveWithControllers extends Command {
 
+  // working variables
   private Chassis _chassis = Robot._Chassis;
   private OI _oi = OI.getInstance();
 
+  // ======================================================================================
+  // constructor  
+  // ======================================================================================
   public DriveWithControllers() 
   {
+    // Use requires() here to declare subsystem dependencies
     requires(_chassis);
-    
     setInterruptible(true);
   }
 

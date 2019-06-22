@@ -7,7 +7,7 @@
 
 package frc.robot.interfaces;
 
-import frc.robot.util.LogDataBE;
+import frc.robot.entities.LogDataBE;
 
 /**
  * This interface defines the methods all Subsystems classes must implement

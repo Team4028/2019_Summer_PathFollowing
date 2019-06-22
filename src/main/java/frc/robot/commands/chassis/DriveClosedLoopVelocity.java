@@ -12,8 +12,10 @@ import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
 
+// Command used during Talon Velocity Loop Tuning
 public class DriveClosedLoopVelocity extends Command {
 
+  // working variables
   private Chassis _chassis = Robot._Chassis;
 
   private String _markerName;
@@ -23,6 +25,9 @@ public class DriveClosedLoopVelocity extends Command {
   private double _leftTargetVelocityInInchesPerSec;
   private double _rightTargetVelocityInInchesPerSec;
   
+  // ======================================================================================
+  // constructor  
+  // ======================================================================================
   public DriveClosedLoopVelocity(String markerName, int pidSlotIndex, long runTimeInSec, double leftTargetVelocityInInchesPerSec, double rightTargetVelocityInInchesPerSec) 
   {
     // Use requires() here to declare subsystem dependencies
@@ -47,6 +52,7 @@ public class DriveClosedLoopVelocity extends Command {
     // set correct pid constants to use
     _chassis.setActivePIDConstantsSlot(_pidSlotIndex);
 
+    // set marker in log file records so we can tell when the command started in telop mode
     if(Robot._DataLogger != null)
     {
       Robot._DataLogger.setMarker(_markerName);

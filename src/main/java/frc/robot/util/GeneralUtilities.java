@@ -13,12 +13,13 @@ import java.util.Date;
 import java.util.TimeZone;
 
 import frc.robot.Robot;
-import frc.robot.RobotMap;
 import edu.wpi.first.wpilibj.DriverStation;
 
-public class GeneralUtilities {		
+public class GeneralUtilities {
+
     /** Writes general info about the build to the Operator's Console */
-	public static String WriteBuildInfoToDashboard(String robotName) {
+	public static String WriteBuildInfoToDashboard(String robotName) 
+	{
 		String buildMsg = "?";
 		try {
     		//get the path of the currently executing jar file
@@ -39,58 +40,12 @@ public class GeneralUtilities {
 			DriverStation.reportWarning(buildMsg, false);
 		} catch (URISyntaxException e) {
     		DriverStation.reportWarning("Error determining filename of current JAR file", true);
-			//e.printStackTrace();
 		} catch (IOException e) {	
     		DriverStation.reportWarning("General Error trying to determine current JAR file", true);
-			//e.printStackTrace();
 		}
 		return buildMsg;
 	}
-	
-    /** Optionally sets up logging if return object is null, logger is disabled */
-	public static DataLogger setupLogging(String mode) {
-		DataLogger dataLogger;
-				
-		// see if the USB stick is plugged into to RoboRIO
-		Path path = Paths.get(RobotMap.PRIMARY_LOG_FILE_PATH);
-		Path alternatePath = Paths.get(RobotMap.ALTERNATE_LOG_FILE_PATH);
-    	if (Files.exists(path)) {
-    		try {
-				dataLogger = new DataLogger(RobotMap.PRIMARY_LOG_FILE_PATH, mode);
-					  
-				System.out.println("-------------------------------------");
-				System.out.println("..Logging enabled to: " + dataLogger.getLogFilePathName());
-				System.out.println("-------------------------------------");
-			} catch (IOException e) {
-				e.printStackTrace();
-				
-	    		dataLogger = null;
-				
-				System.out.println("-------------------------------------");
-				System.out.println("..Error configuring Logging to: " + RobotMap.PRIMARY_LOG_FILE_PATH);
-				System.out.println("-------------------------------------");
-			}
-    	}
-    	else if (Files.exists(alternatePath)) {
-    		try {
-				dataLogger = new DataLogger(RobotMap.ALTERNATE_LOG_FILE_PATH, mode);
-					    		
-	    		System.out.println("..Logging enabled to: " + dataLogger.getLogFilePathName());
-			} catch (IOException e) {
-				e.printStackTrace();
-				
-	    		dataLogger = null;
-	    		
-	    		System.out.println("..Error configuring Logging to: " + RobotMap.ALTERNATE_LOG_FILE_PATH);
-    		}
-    	} else {
-    		dataLogger = null;
-    		
-    		System.out.println("..Logging Disabled!");
-    	}
-    	return dataLogger;
-	}
-	
+		
     // This method rounds a double to the specified # of decimal places
 	public static double roundDouble(Double originalValue, int decimalPlaces) {
 		BigDecimal bd = new BigDecimal(originalValue).setScale(decimalPlaces, RoundingMode.HALF_EVEN);

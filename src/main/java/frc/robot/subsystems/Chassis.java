@@ -22,8 +22,8 @@ import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.RobotMap;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
-import frc.robot.util.MotorCtrPIDGainsBE;
-import frc.robot.util.LogDataBE;
+import frc.robot.entities.MotorCtrPIDGainsBE;
+import frc.robot.entities.LogDataBE;
 
 /**
  * An example subsystem. You can replace me with your own Subsystem.
@@ -55,12 +55,15 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   public static final int PID_PROFILE_SLOT_IDX_LS = 1;
   private static final int PID_PROFILE_PID_IDX_PRIMARY = 0;
 
-  private int _activePIDProfileSlotIdx = 0;
   private double _leftTargetVelInInchPerSec = 0;
   private double _rightTargetVelInInchPerSec = 0;
 
   private double _leftPercentVBusCmd;
   private double _rightPercentVBusCmd;
+
+  private int _activePIDProfileSlotIdx = 0;
+  private StringBuilder _sb = new StringBuilder(50);
+
   /**
    * PID Gains may have to be adjusted based on the responsiveness of control
    * loop. kF: 1023 represents output value to Talon at 100%, 9200 represents
@@ -151,16 +154,10 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     driveMotor.setSelectedSensorPosition(0, 0, CAN_TIMEOUT_MSECS_INIT);
     // talon.configGetParameter(ParamEnum.eSelectedSensorCoefficient, ordinal);
 
-    // talon.setStatusFramePeriod(StatusFrame.Status_2_Feedback0, 5,
-    // CAN_TIMEOUT_MSECS_INIT);
-    // talon.configVelocityMeasurementPeriod(VelocityMeasPeriod.Period_10Ms,
-    // CAN_TIMEOUT_MSECS_INIT);
-    // talon.configVelocityMeasurementWindow(32, CAN_TIMEOUT_MSECS_INIT);
-
     driveMotor.configClosedloopRamp(0.0, CAN_TIMEOUT_MSECS_INIT);
 
     // update PID 0 feedback values more often (default = 100mS) so error value is more accurate
-    driveMotor.setStatusFramePeriod(StatusFrame.Status_13_Base_PIDF0, 20, CAN_TIMEOUT_MSECS_INIT);
+    driveMotor.setStatusFramePeriod(StatusFrame.Status_13_Base_PIDF0, 10, CAN_TIMEOUT_MSECS_INIT);
     return driveMotor;
   }
 
@@ -282,8 +279,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
 
   private double CalcNUPer100mSFromRPM(double wheelRPM) {
 
-    double kMinPerSec = 1.0 / 60.0;
-    double kSecPer100mSec = 1.0 / 10.0;
+    final double kMinPerSec = 1.0 / 60.0;
+    final double kSecPer100mSec = 1.0 / 10.0;
 
     double rpmEncoder = wheelRPM * ENCODER_REVS_PER_WHEEL_REV;
 
@@ -342,50 +339,27 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
 
   public double getLeftMasterClosedLoopTarget() 
   {
-    if (_leftMaster.getControlMode() != ControlMode.PercentOutput)
-    {
-      return _leftMaster.getClosedLoopTarget(0);
-    }
-    else
-    {
-      return 0;
-    }
+    if (_leftMaster.getControlMode() != ControlMode.PercentOutput) { return _leftMaster.getClosedLoopTarget(0); }
+    else { return 0; }
   }
 
   public double getRightMasterClosedLoopTarget()
   {
     if (_rightMaster.getControlMode() != ControlMode.PercentOutput)
-    {
-      return _rightMaster.getClosedLoopTarget(0);
-    }
-    else
-    {
-      return 0;
-    }
+    { return _rightMaster.getClosedLoopTarget(0); }
+    else { return 0; }
   }
 
   public double getLeftEncoderClosedLoopError()
   {
-    if (_leftMaster.getControlMode() != ControlMode.PercentOutput)
-    {
-      return _leftMaster.getClosedLoopError(0);
-    }
-    else
-    {
-      return 0;
-    }
+    if (_leftMaster.getControlMode() != ControlMode.PercentOutput) { return _leftMaster.getClosedLoopError(0); }
+    else { return 0; }
   }
 
   public double getRightEncoderClosedLoopError() 
   {
-    if (_rightMaster.getControlMode() != ControlMode.PercentOutput)
-    {
-      return _rightMaster.getClosedLoopError(0);
-    }
-    else
-    {
-      return 0;
-    }
+    if (_rightMaster.getControlMode() != ControlMode.PercentOutput) { return _rightMaster.getClosedLoopError(0); }
+    else { return 0; }
   }
 
   public double getLeftWheelVelocityInRPM() {
@@ -443,7 +417,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   @Override
   public void updateLogData(LogDataBE logData) 
   {
-    // Left Log Values
+    // ======= Left Log Values ======================================================================
     logData.AddData("Chassis:Left%VBusCmd", Double.toString(_leftPercentVBusCmd));
     logData.AddData("Chassis:LeftTrgtCmdVelInIPS", Double.toString(_leftTargetVelInInchPerSec));
     logData.AddData("Chassis:LeftTrgtVelInNUPer100mS", Double.toString(getLeftMasterClosedLoopTarget()));
@@ -458,14 +432,17 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     logData.AddData("Chassis:LeftControlMode", _leftMaster.getControlMode().toString());
     logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
     
-    //MotorCtrPIDGainsBE leftCurrentGains = _pidGainsLeftLU[_activePIDProfileSlotIdx];
-    String leftGains = Double.toString(_leftActiveSlotConfig.kF) + " | " + 
-                        Double.toString(_leftActiveSlotConfig.kP) + " | " + 
-                        Double.toString(_leftActiveSlotConfig.kI) + " | " + 
-                        Double.toString(_leftActiveSlotConfig.kD);
-    logData.AddData("Chassis:LeftPIDGains", leftGains);
+    _sb.setLength(0);
+    _sb.append(Double.toString(_leftActiveSlotConfig.kF)); 
+    _sb.append(" | ");
+    _sb.append(Double.toString(_leftActiveSlotConfig.kP));
+    _sb.append(" | ");
+    _sb.append(Double.toString(_leftActiveSlotConfig.kI));
+    _sb.append(" | ");
+    _sb.append(Double.toString(_leftActiveSlotConfig.kD));
+    logData.AddData("Chassis:LeftPIDGains", _sb.toString());
     
-    // Right Log Values
+    // ======= Right Log Values ======================================================================
     logData.AddData("Chassis:Rgt%VBusCmd", Double.toString(_rightPercentVBusCmd));
     logData.AddData("Chassis:RgtTrgtCmdVelInIPS", Double.toString(_rightTargetVelInInchPerSec));
     logData.AddData("Chassis:RgtTrgtVelInNUPer100mS", Double.toString(getRightMasterClosedLoopTarget()));
@@ -480,12 +457,15 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     logData.AddData("Chassis:RgtControlMode", _rightMaster.getControlMode().toString());
     logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
 
-    //MotorCtrPIDGainsBE rightCurrentGains = _pidGainsRgtLU[_activePIDProfileSlotIdx];
-    String rightGains = Double.toString(_rightActiveSlotConfig.kF) + " | " + 
-                        Double.toString(_rightActiveSlotConfig.kP) + " | " + 
-                        Double.toString(_rightActiveSlotConfig.kI) + " | " + 
-                        Double.toString(_rightActiveSlotConfig.kD);
-    logData.AddData("Chassis:RgtPIDGains", rightGains);
+    _sb.setLength(0);
+    _sb.append(Double.toString(_rightActiveSlotConfig.kF)); 
+    _sb.append(" | ");
+    _sb.append(Double.toString(_rightActiveSlotConfig.kP));
+    _sb.append(" | ");
+    _sb.append(Double.toString(_rightActiveSlotConfig.kI));
+    _sb.append(" | ");
+    _sb.append(Double.toString(_rightActiveSlotConfig.kD));
+    logData.AddData("Chassis:RgtPIDGains", _sb.toString());
   }
 
   @Override
@@ -503,5 +483,4 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
     SmartDashboard.putNumber("Chassis:RgtEncClosedLoopErr", getRightEncoderClosedLoopError());
     SmartDashboard.putNumber("Chassis:RgtMtrOutputVolts", getRightMotorOutputVoltage());
   }
-
 }
