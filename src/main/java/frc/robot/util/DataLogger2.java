@@ -20,6 +20,7 @@ import frc.robot.RobotMap;
 import frc.robot.entities.LogDataBE;
 
 // implements logic to log data to text file
+// this is the original DataLogger class
 public class DataLogger2 
 {
 	private PrintWriter _writer;
@@ -38,17 +39,17 @@ public class DataLogger2
     // constructor, open a new timestamped log file in the target directory
 	public DataLogger2(String parentFolder, String fileSuffix) throws IOException 
 	{
-    	////SimpleDateFormat outputFormatter = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS");
-		////outputFormatter.setTimeZone(TimeZone.getTimeZone("US/Eastern")); 
-		////String newDateString = outputFormatter.format(new Date());
+    	SimpleDateFormat outputFormatter = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS");
+		outputFormatter.setTimeZone(TimeZone.getTimeZone("US/Eastern")); 
+		String newDateString = outputFormatter.format(new Date());
     	
     	// build the new filename
-		////String fileName = newDateString + "_" + fileSuffix + ".tsv";
+		String fileName = newDateString + "_" + fileSuffix + ".tsv";
 		
     	// build the full file path name
-    	////_logFilePathName = parentFolder + File.separator + fileName;
+    	_logFilePathName = parentFolder + File.separator + fileName;
     	
-        //_writer = new PrintWriter(new BufferedWriter(new FileWriter(_logFilePathName, true)));
+        _writer = new PrintWriter(new BufferedWriter(new FileWriter(_logFilePathName, true)));
     }
 
 	public void setMarker(String markerName)
