@@ -1,7 +1,9 @@
 package frc.robot.ux;
 
 import frc.robot.RobotMap;
+import frc.robot.commands.chassis.DriveClosedLoopStep;
 import frc.robot.commands.chassis.DriveClosedLoopVelocity;
+import frc.robot.commands.chassis.DriveOpenLoopStep;
 import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.commands.chassis.StopChassis;
 import frc.robot.commands.chassis.ZeroSensors;
@@ -46,6 +48,8 @@ public class OI {
 		_driverController.a.whenPressed(new DriveClosedLoopVelocity("3_40", Chassis.PID_PROFILE_SLOT_IDX_LS, 3, 40.0, 40.0));
 		_driverController.b.whenPressed(new StopChassis());
 		_driverController.x.whenPressed(new ZeroSensors());
+		//_driverController.y.whenPressed(new DriveOpenLoopStep(15, 0.025));
+		_driverController.y.whenPressed(new DriveClosedLoopStep(30, 0.25, Chassis.PID_PROFILE_SLOT_IDX_LS));
 
 		// =========== Operator ======================================
 		//_operatorController = new BeakXboxController(RobotMap.OPERATOR_GAMEPAD_USB_PORT);

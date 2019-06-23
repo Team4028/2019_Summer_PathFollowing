@@ -22,7 +22,7 @@ import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
-
+import frc.robot.util.DataLogger2;
 import frc.robot.util.GeneralUtilities;
 import frc.robot.entities.LogDataBE;
 import frc.robot.ux.OI;
@@ -49,7 +49,7 @@ public class Robot extends TimedRobot {
   public static Chassis _Chassis = Chassis.getInstance();
 
   // class level working variables
-  public static DataLogger _DataLogger = null;
+  public static DataLogger2 _DataLogger = null;
 
   private String _buildMsg = "?";
   private Command _autonomousCommand = null;
@@ -95,10 +95,10 @@ public class Robot extends TimedRobot {
     _navX.zeroYaw();
 
     // init data logging
-    _DataLogger = DataLogger.setupLogging("Auton"); 
+    _DataLogger = DataLogger2.setupLogging("Auton"); 
 
     // setup auton command
-    _autonomousCommand = new DriveFollowPathClosedLoop("Straight_v3", this::logAllData);
+    _autonomousCommand = new DriveFollowPathClosedLoop("RightTurn_v1", this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
@@ -129,7 +129,7 @@ public class Robot extends TimedRobot {
     driveWJoyStick.start();
 
     // init data logging
-    _DataLogger = DataLogger.setupLogging("Telop"); // init data logging	
+    _DataLogger = DataLogger2.setupLogging("Telop"); // init data logging	
   }
 
    /* This function is called periodically during teleop mode.

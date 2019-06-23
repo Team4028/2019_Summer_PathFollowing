@@ -32,6 +32,11 @@ public class LogDataBE {
 		_logDataTimeStampinMS = logDataTimeStampinMS;
 	}
 
+	public boolean get_isEmpty()
+	{
+		return _names.isEmpty() || _values.isEmpty();
+	}
+
 	public long get_logDataTimeStampinMS()
 	{
 		return _logDataTimeStampinMS;

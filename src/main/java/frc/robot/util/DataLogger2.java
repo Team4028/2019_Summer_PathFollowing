@@ -34,8 +34,6 @@ public class DataLogger2
 	private String _markerName = null;
 	private long _markerStartDTMS;
 
-	private Queue<LogDataBE> logEvents = new LinkedList<LogDataBE>();
-
     // constructor, open a new timestamped log file in the target directory
 	public DataLogger2(String parentFolder, String fileSuffix) throws IOException 
 	{
@@ -74,16 +72,15 @@ public class DataLogger2
         _writer.flush();
     }
 
+    // Write a structured data object to the log file
 	public void WriteDataLine(LogDataBE dataToLog) 
 	{
-		logEvents.add(dataToLog);
+		// protect against timing issue where no data has been added yet
+		if(dataToLog.get_isEmpty())
+		{
+			return;
+		}
 
-		System.out.println("Total Log Records: " + logEvents.size());
-	}
-
-    // Write a structured data object to the log file
-	public void WriteDataLine2(LogDataBE dataToLog) 
-	{
 		// optionally write log header if this is 1st loop
 		if(!_isHeadersWrittenAlready) {
 			WriteHeaderLine(dataToLog.BuildTSVHeader());
@@ -144,8 +141,6 @@ public class DataLogger2
 			_writer.flush();
 			_writer.close(); // close the file
 		}
-
-		System.out.println("Total Log Records: " + logEvents.size());
 	}
 	   
 	//===============
@@ -153,17 +148,6 @@ public class DataLogger2
 	//===============
 	/** Optionally sets up logging if return object is null, logger is disabled */
 	public static DataLogger2 setupLogging(String mode) {
-		try {
-			return new DataLogger2("", "");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		return null;
-	}
-
-	public static DataLogger2 setupLogging2(String mode) {
 		DataLogger2 dataLogger;
 				
 		// see if the USB stick is plugged into to RoboRIO

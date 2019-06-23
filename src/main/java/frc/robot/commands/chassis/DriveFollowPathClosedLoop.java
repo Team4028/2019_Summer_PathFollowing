@@ -22,7 +22,7 @@ import frc.robot.subsystems.Chassis;
 import frc.robot.entities.EncoderFollowerPIDGainsBE;
 import frc.robot.entities.LogDataBE;
 import frc.robot.util.GeneralUtilities;
-
+import jaci.pathfinder.Pathfinder;
 import jaci.pathfinder.PathfinderFRC;
 import jaci.pathfinder.Trajectory;
 import jaci.pathfinder.Trajectory.Segment;
@@ -45,6 +45,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     private double _leftStartingDistance = 0;
     private double _rightStartingDistance = 0;
 
+    private String _pathName = "";
     private Runnable _loggingMethodDelegate;
     private double _loopPeriodInMS = 0;
     private double _lastLoopTimeInMS = 0;
@@ -76,10 +77,10 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
      * value can also be pretty dangerous if you tune it too high.
      */
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 1.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(1.4, 0.0, 1.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 1.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(1.4, 0.0, 1.0, 0.0);
 
     // ======================================================================================
     // constructor
@@ -89,6 +90,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         requires(_chassis);
         setInterruptible(true);
 
+        _pathName = pathName;
         importPath(pathName);
 
         _leftFollower.configurePIDVA(_leftFollowerGains.KP, 
@@ -118,13 +120,15 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         _rightFollower.reset();
 
         // set chassis pid constants
-        _chassis.setActivePIDConstantsSlot(1);
+        _chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_LS);
 
         // initialize last loop timestamp
         _lastLoopTimeInMS = RobotController.getFPGATime() / 1000.0;
 
         // Start running the path
         _notifier.startPeriodic(_loopPeriodInMS);
+
+        System.out.println(">>>>>>>>> Running Path: " + _pathName + " <<<<<<<<<<");
     }
 
     @Override
@@ -181,15 +185,30 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         _lastLoopTimeInMS = currentTimeInMS;
 
         // Get the left and right power output from the distance calculator
+        /*
+            double calculated_value =
+            kp * error +                                    // Proportional
+            kd * ((error - last_error) / seg.dt) +          // Derivative
+            (kv * seg.velocity + ka * seg.acceleration);    // V and A Terms
+        */
         double left_speed = 
                 _leftFollower.calculate(_chassis.getLeftChassisPositionInInches() - _leftStartingDistance);
         double right_speed = 
                 _rightFollower.calculate(_chassis.getRightChassisPositionInInches() - _rightStartingDistance);
 
+        if(left_speed > 0.1)
+        {
+            left_speed = left_speed + 4.0;
+        }
+        if(right_speed > 0.1)
+        {
+            right_speed = right_speed + 4.0;
+        }
+
         // Calculate any correction we need based on the current and desired heading
         double heading = _navX.getPathfinderYaw();
         double desired_heading = r2d(_leftFollower.getHeading());
-        double heading_difference = 0.0; // boundHalfDegrees(desired_heading - heading);
+        double heading_difference = 0.0; //Pathfinder.boundHalfDegrees(desired_heading - heading);
         double turn = 0.8 * (-1.0 / 80.0) * heading_difference;
 
         // Send the % outputs to the drivetrain
