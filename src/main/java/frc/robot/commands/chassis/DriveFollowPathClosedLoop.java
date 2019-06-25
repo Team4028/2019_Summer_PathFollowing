@@ -174,12 +174,6 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
 
     private void followPath() {
 
-        // if a logging method delegate was passed in, call it to log the current values
-        //  likely the result of the provious loop
-        if (_loggingMethodDelegate != null) {
-            _loggingMethodDelegate.run();
-        }
-
         double currentTimeInMS = RobotController.getFPGATime() / 1000.0;
         System.out.println(GeneralUtilities.roundDouble(currentTimeInMS - _lastLoopTimeInMS, 1));
         _lastLoopTimeInMS = currentTimeInMS;
@@ -208,15 +202,21 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         // Calculate any correction we need based on the current and desired heading
         double heading = _navX.getPathfinderYaw();
         double desired_heading = r2d(_leftFollower.getHeading());
-        double heading_difference = 0.0; //Pathfinder.boundHalfDegrees(desired_heading - heading);
-        double turn = 0.8 * (-1.0 / 80.0) * heading_difference;
+        double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
+        double turn = 5 * 0.8 * (-1.0 / 80.0) * heading_difference;
 
         // Send the % outputs to the drivetrain
-        _chassis.setClosedLoopVelocityCmd(left_speed + turn, right_speed - turn);
+        _chassis.setClosedLoopVelocityCmd(left_speed - turn, right_speed + turn);
+    
+            // if a logging method delegate was passed in, call it 
+        if (_loggingMethodDelegate != null) {
+            _loggingMethodDelegate.run();
+        }
     }
 
     @Override
     public void updateLogData(LogDataBE logData) {
+        // use stringbuilder instead of concat for perf
         if (!_leftFollower.isFinished()) 
         {
             _sb.setLength(0);

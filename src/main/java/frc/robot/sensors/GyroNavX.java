@@ -59,7 +59,7 @@ public class GyroNavX implements IBeakSquadDataPublisher {
     // If you have a typical gyro, then it gives a + reading for a clockwise rotation \
     // where Pathfinder expects this to be a negative gyro direction.
     public double getPathfinderYaw() {
-        return -1.0 * _navXSensor.getYaw();
+        return -1 * _navXSensor.getYaw();
     }
 
     public void zeroYaw() {

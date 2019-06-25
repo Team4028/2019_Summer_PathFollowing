@@ -70,7 +70,8 @@ public class LogDataBE {
 	
 	/** Build a TSV string from a List<string> */
 	private String BuildTSVString(List<String> myList) {
-		StringBuilder sb = new StringBuilder();
+		// create stringbuilder with a larger initial capacity to improve perf
+		StringBuilder sb = new StringBuilder(550);
 		
 		for(String item : myList) {
 			// add the item + a tab character
