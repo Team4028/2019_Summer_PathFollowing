@@ -3,8 +3,6 @@ package frc.robot.entities;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.wpi.first.wpilibj.RobotController;
-
 // This is a "data entity" class that hold the data to logged.
 // Subsystem classes use the Add method to add data in their UpdateLogData method as Name/Value pairs
 // Internally, this class holds the Names & Values in 2 arrays

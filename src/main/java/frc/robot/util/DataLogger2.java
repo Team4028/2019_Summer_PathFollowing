@@ -10,10 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.RobotMap;
@@ -21,8 +18,7 @@ import frc.robot.entities.LogDataBE;
 
 // implements logic to log data to text file
 // this is the original DataLogger class
-public class DataLogger2 
-{
+public class DataLogger2 {
 	private PrintWriter _writer;
     
     private String _logFilePathName;
@@ -35,8 +31,7 @@ public class DataLogger2
 	private long _markerStartDTMS;
 
     // constructor, open a new timestamped log file in the target directory
-	public DataLogger2(String parentFolder, String fileSuffix) throws IOException 
-	{
+	public DataLogger2(String parentFolder, String fileSuffix) throws IOException {
     	SimpleDateFormat outputFormatter = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS");
 		outputFormatter.setTimeZone(TimeZone.getTimeZone("US/Eastern")); 
 		String newDateString = outputFormatter.format(new Date());
@@ -50,15 +45,13 @@ public class DataLogger2
         _writer = new PrintWriter(new BufferedWriter(new FileWriter(_logFilePathName, true)));
     }
 
-	public void setMarker(String markerName)
-	{
+	public void setMarker(String markerName) {
 		_markerName = markerName;
 		//_markerStartDTMS = System.currentTimeMillis();
 		_markerStartDTMS = RobotController.getFPGATime() / 1000;
 	}
 
-	public void clearMarker()
-	{
+	public void clearMarker() {
 		_markerName = null;
 	}
 
@@ -73,11 +66,9 @@ public class DataLogger2
     }
 
     // Write a structured data object to the log file
-	public void WriteDataLine(LogDataBE dataToLog) 
-	{
+	public void WriteDataLine(LogDataBE dataToLog) {
 		// protect against timing issue where no data has been added yet
-		if(dataToLog.get_isEmpty())
-		{
+		if(dataToLog.get_isEmpty()) {
 			return;
 		}
 
@@ -95,16 +86,14 @@ public class DataLogger2
 
 		// calc elapsed time (in mS) since last scan (should be 20 mS)
 		double lastScanDeltaDiffInMS = 0;
-		if (_lastScanDTMS  > 0)
-		{
+		if (_lastScanDTMS  > 0) {
 			//lastScanDeltaDiffInMS = System.currentTimeMillis() - _lastScanDTMS;
 			//lastScanDeltaDiffInMS = (RobotController.getFPGATime() / 1000) - _lastScanDTMS;
 			lastScanDeltaDiffInMS = dataToLog.get_logDataTimeStampinMS() - _lastScanDTMS;
 		}
 		
 		// write out the current data
-		if(_markerName != null)
-		{
+		if(_markerName != null) {
 			// calc elapsed time (in mS) since last marker set
 			//long markerDeltaDiffInMSecs = System.currentTimeMillis() - _markerStartDTMS;
 			//double markerElapsedInMSecs = (RobotController.getFPGATime() / 1000) - _markerStartDTMS;
@@ -115,9 +104,7 @@ public class DataLogger2
 							+ _markerName + "\t" 
 							+ markerElapsedInMSecs + "\t" 
 							+ dataToLog.BuildTSVData());
-		}
-		else
-		{
+		} else {
 			_writer.print(startDeltaDiffInMSecs + "\t" 
 							+ lastScanDeltaDiffInMS + "\t" 
 							+ "\t" 
@@ -134,10 +121,8 @@ public class DataLogger2
 		_lastScanDTMS = dataToLog.get_logDataTimeStampinMS();
     }
         
-	public void close() 
-	{
-		if(_writer != null)
-		{
+	public void close() {
+		if(_writer != null)	{
 			_writer.flush();
 			_writer.close(); // close the file
 		}

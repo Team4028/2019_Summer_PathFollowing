@@ -11,21 +11,16 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
 
 import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
-import frc.robot.commands.chassis.DriveFollowPathClosedLoopV2;
-import frc.robot.commands.chassis.DriveFollowPathOpenLoop;
 import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
-import frc.robot.util.DataLogger;
 import frc.robot.util.DataLogger2;
 import frc.robot.util.GeneralUtilities;
 import frc.robot.entities.LogDataBE;
-import frc.robot.ux.OI;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -39,8 +34,6 @@ public class Robot extends TimedRobot {
 
   // create instance of each Subsystem (singleton)
   // Note: add each one to the outputAllToDashboard & logAllData methods below
-  // ux
-  private OI _oi = OI.getInstance();
 
   // sensors
   public static GyroNavX _navX = GyroNavX.getInstance();
@@ -98,7 +91,7 @@ public class Robot extends TimedRobot {
     _DataLogger = DataLogger2.setupLogging("Auton"); 
 
     // setup auton command
-    _autonomousCommand = new DriveFollowPathClosedLoop("Straight_v3", this::logAllData);
+    _autonomousCommand = new DriveFollowPathClosedLoop("LeftTurn_v2", this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {

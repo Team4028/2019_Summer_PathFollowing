@@ -38,6 +38,23 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     private DistanceFollower _leftFollower;
     private DistanceFollower _rightFollower;
 
+    // Class Level Constant
+    private static final double KH = 5; // This constant multiplies the effect of the heading 
+                                        // compensation on the motor output (Original equation assumes
+                                        // open loop [-1 - 1], so this compensates for closed loop)
+
+    //Graphing Paths Utility Varibales
+    private double _leftXCoord;
+    private double _leftYCoord;
+    private double _lastLPosition = 0;
+    private double _leftLastXCoord = 0;
+    private double _leftLastYCoord = 12;
+    private double _rightXCoord;
+    private double _rightYCoord;
+    private double _lastRPosition = 0;
+    private double _rightLastXCoord = 0;
+    private double _rightLastYCoord = -12;
+
     // create notifier that will 
     private Notifier _notifier = new Notifier(this::followPath);
 
@@ -190,12 +207,10 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         double right_speed = 
                 _rightFollower.calculate(_chassis.getRightChassisPositionInInches() - _rightStartingDistance);
 
-        if(left_speed > 0.1)
-        {
+        if(left_speed > 0.1) {
             left_speed = left_speed + 4.0;
         }
-        if(right_speed > 0.1)
-        {
+        if(right_speed > 0.1) {
             right_speed = right_speed + 4.0;
         }
 
@@ -203,7 +218,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         double heading = _navX.getPathfinderYaw();
         double desired_heading = r2d(_leftFollower.getHeading());
         double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
-        double turn = 5 * 0.8 * (-1.0 / 80.0) * heading_difference;
+        double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;
 
         // Send the % outputs to the drivetrain
         _chassis.setClosedLoopVelocityCmd(left_speed - turn, right_speed + turn);
@@ -217,8 +232,8 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     @Override
     public void updateLogData(LogDataBE logData) {
         // use stringbuilder instead of concat for perf
-        if (!_leftFollower.isFinished()) 
-        {
+        if (!_leftFollower.isFinished()) {
+
             _sb.setLength(0);
             _sb.append(Double.toString(_leftFollowerGains.KP));
             _sb.append(" | ");
@@ -236,10 +251,24 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
             logData.AddData("LeftFollower:SegmentPos", Double.toString(currentLeftSegment.position));
             logData.AddData("LeftFollower:SegmentVel", Double.toString(currentLeftSegment.velocity));
             logData.AddData("LeftFollower:SegmentAccel", Double.toString(currentLeftSegment.acceleration));
+            logData.AddData("LeftFollower:Heading", Double.toString(currentLeftSegment.heading));
+            
+            double leftDPSegment = currentLeftSegment.position - _lastLPosition;
+            double leftDXSegment = leftDPSegment * Math.cos(currentLeftSegment.heading);
+            double leftDYSegment = -leftDPSegment * Math.sin(currentLeftSegment.heading);
+
+            _leftXCoord = _leftLastXCoord + leftDXSegment;
+            _leftYCoord = _leftLastYCoord + leftDYSegment;
+
+            logData.AddData("LeftFollower:X", Double.toString(_leftXCoord));
+            logData.AddData("LeftFollower:Y", Double.toString(_leftYCoord));
+
+            _lastLPosition = currentLeftSegment.position;
+            _leftLastXCoord = _leftXCoord;
+            _leftLastYCoord = _leftYCoord;
         }
     
-        if (!_rightFollower.isFinished()) 
-        {
+        if (!_rightFollower.isFinished()) {
             _sb.setLength(0);
             _sb.append(Double.toString(_rightFollowerGains.KP));
             _sb.append(" | ");
@@ -257,11 +286,24 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
             logData.AddData("RgtFollower:SegmentPos", Double.toString(currentRightSegment.position));
             logData.AddData("RgtFollower:SegmentVel", Double.toString(currentRightSegment.velocity));
             logData.AddData("RgtFollower:SegmentAccel", Double.toString(currentRightSegment.acceleration));
+            logData.AddData("RGTFollower:Heading", Double.toString(currentRightSegment.heading));
+
+            double rightDPSegment = currentRightSegment.position - _lastRPosition;
+            double rightDXSegment = rightDPSegment * Math.cos(currentRightSegment.heading);
+            double rightDYSegment = -rightDPSegment * Math.sin(currentRightSegment.heading);
+
+            _rightXCoord = _rightLastXCoord + rightDXSegment;
+            _rightYCoord = _rightLastYCoord + rightDYSegment;
+
+            logData.AddData("RgtFollower:X", Double.toString(_rightXCoord));
+            logData.AddData("RgtFollower:Y", Double.toString(_rightYCoord));
+
+            _lastRPosition = currentRightSegment.position;
+            _rightLastXCoord = _rightXCoord;
+            _rightLastYCoord = _rightYCoord;
         }
+        logData.AddData("PathFollower:KH", Double.toString(KH));
     }
-
     @Override
-    public void updateDashboard() {
-
-    }
+    public void updateDashboard() {}
 }

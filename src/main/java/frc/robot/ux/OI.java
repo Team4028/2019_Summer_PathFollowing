@@ -3,23 +3,18 @@ package frc.robot.ux;
 import frc.robot.RobotMap;
 import frc.robot.commands.chassis.DriveClosedLoopStep;
 import frc.robot.commands.chassis.DriveClosedLoopVelocity;
-import frc.robot.commands.chassis.DriveOpenLoopStep;
-import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.commands.chassis.StopChassis;
 import frc.robot.commands.chassis.ZeroSensors;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.BeakXboxController;
-import frc.robot.util.DataLogger;
 
 /**
  * This class interfaces with the Driver/Operator Station Lead Student:
  */
 public class OI {
 	private BeakXboxController _driverController;
-	private BeakXboxController _operatorController;
-	private BeakXboxController _engineerController;
-
-	private DataLogger _dataLoggerInstance;
+	// private BeakXboxController _operatorController;
+	// private BeakXboxController _engineerController;
 
 	// =====================================================================================
 	// Define Singleton Pattern

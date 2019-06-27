@@ -7,7 +7,6 @@
 
 package frc.robot.subsystems;
 
-import com.ctre.phoenix.ParamEnum;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.LimitSwitchNormal;
@@ -17,19 +16,18 @@ import com.ctre.phoenix.motorcontrol.StatusFrame;
 import com.ctre.phoenix.motorcontrol.can.SlotConfiguration;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
-import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.command.Subsystem;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.RobotMap;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
+import frc.robot.sensors.GyroNavX;
 import frc.robot.entities.MotorCtrPIDGainsBE;
 import frc.robot.entities.LogDataBE;
 
 /**
  * An example subsystem. You can replace me with your own Subsystem.
  */
-public class Chassis extends Subsystem implements IBeakSquadDataPublisher 
-{
+public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   private TalonSRX _leftMaster;
   private TalonSRX _leftSlave1;
   private TalonSRX _leftSlave2;
@@ -41,9 +39,25 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   private static final int CAN_TIMEOUT_MSECS_PERIODIC = 0;
   private static final int BIG_NUMBER = (int) 1e6;
 
+  private boolean _isVerboseLoggingEnabled = false;
+
+  //Graphing Paths Utility Varibales
+  private double _leftXCoord;
+  private double _leftYCoord;
+  private double _lastLPosition = 0;
+  private double _leftLastXCoord = 0;
+  private double _leftLastYCoord = 12;
+  private double _rightXCoord;
+  private double _rightYCoord;
+  private double _lastRPosition = 0;
+  private double _rightLastXCoord = 0;
+  private double _rightLastYCoord = -12;
+
+  private GyroNavX _navX = GyroNavX.getInstance();
+  
   // Robot Physical Constants
   public static final double DRIVE_WHEEL_DIAMETER_IN = 7.0;
-  private static final double TRACK_WIDTH_INCHES = 24.0;
+  // private static final double TRACK_WIDTH_INCHES = 24.0;
   public static final double MAX_VEL_IN_PER_SEC = 135;
   // Encoder Constants
   private static double ENCODER_REVS_PER_WHEEL_REV = 12.0;
@@ -418,54 +432,99 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher
   public void updateLogData(LogDataBE logData) 
   {
     // ======= Left Log Values ======================================================================
-    logData.AddData("Chassis:Left%VBusCmd", Double.toString(_leftPercentVBusCmd));
-    logData.AddData("Chassis:LeftTrgtCmdVelInIPS", Double.toString(_leftTargetVelInInchPerSec));
-    logData.AddData("Chassis:LeftTrgtVelInNUPer100mS", Double.toString(getLeftMasterClosedLoopTarget()));
+    if(_isVerboseLoggingEnabled){
+      logData.AddData("Chassis:Left%VBusCmd", Double.toString(_leftPercentVBusCmd));
+      logData.AddData("Chassis:LeftTrgtCmdVelInIPS", Double.toString(_leftTargetVelInInchPerSec));
+      logData.AddData("Chassis:LeftTrgtVelInNUPer100mS", Double.toString(getLeftMasterClosedLoopTarget()));
 
-    logData.AddData("Chassis:LeftActVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
-    logData.AddData("Chassis:LeftActVelInNUPer100mS", Double.toString(getLeftEncoderVelocityInNUPer100mS()));
+      logData.AddData("Chassis:LeftActVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
+      logData.AddData("Chassis:LeftActVelInNUPer100mS", Double.toString(getLeftEncoderVelocityInNUPer100mS()));
 
-    logData.AddData("Chassis:LeftActPosInNU", Double.toString(getLeftEncoderPositionInNU()));
-    logData.AddData("Chassis:LeftActPosInInches", Double.toString(getLeftChassisPositionInInches()));
+      logData.AddData("Chassis:LeftActPosInNU", Double.toString(getLeftEncoderPositionInNU()));
+      logData.AddData("Chassis:LeftActPosInInches", Double.toString(getLeftChassisPositionInInches()));
 
-    logData.AddData("Chassis:LeftClosedLoopErr", Double.toString(getLeftEncoderClosedLoopError()));
-    logData.AddData("Chassis:LeftControlMode", _leftMaster.getControlMode().toString());
-    logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
-    
-    _sb.setLength(0);
-    _sb.append(Double.toString(_leftActiveSlotConfig.kF)); 
-    _sb.append(" | ");
-    _sb.append(Double.toString(_leftActiveSlotConfig.kP));
-    _sb.append(" | ");
-    _sb.append(Double.toString(_leftActiveSlotConfig.kI));
-    _sb.append(" | ");
-    _sb.append(Double.toString(_leftActiveSlotConfig.kD));
-    logData.AddData("Chassis:LeftPIDGains", _sb.toString());
+      logData.AddData("Chassis:LeftClosedLoopErr", Double.toString(getLeftEncoderClosedLoopError()));
+      logData.AddData("Chassis:LeftControlMode", _leftMaster.getControlMode().toString());
+      logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
+      
+      _sb.setLength(0);
+      _sb.append(Double.toString(_leftActiveSlotConfig.kF)); 
+      _sb.append(" | ");
+      _sb.append(Double.toString(_leftActiveSlotConfig.kP));
+      _sb.append(" | ");
+      _sb.append(Double.toString(_leftActiveSlotConfig.kI));
+      _sb.append(" | ");
+      _sb.append(Double.toString(_leftActiveSlotConfig.kD));
+      logData.AddData("Chassis:LeftPIDGains", _sb.toString());
+    } else {
+      // EXPLANATION OF STATE ESTIMATION
+      // Since we don't have the (x,y) coordinates of each side of the chassis, we need to calculate them in order
+      // to be able to map graphically the trajectory of the chassis. The information we do have is position and 
+      // heading at every scan cycle, so using Euler's Method (Calculus stuff), we can add successive vectors to
+      // closely map the actual trajectory (nearly 100% resolution)
+
+      double leftDPSegment = getLeftChassisPositionInInches() - _lastLPosition; //Calculate dP (Current position - last position)
+      double leftDXSegment = leftDPSegment * Math.cos(_navX.getPathfinderYaw()); // dX = dP * cos(heading) (Think traingles)
+      double leftDYSegment = -leftDPSegment * Math.sin(_navX.getPathfinderYaw()); //dY = -dP * sin(heading) (Inverts Y to make left turns go negative on a graph)
+
+      _leftXCoord = _leftLastXCoord + leftDXSegment; // X (Current Position) = dX (Change in X) + X last (Previous Position)
+      _leftYCoord = _leftLastYCoord + leftDYSegment; // Y (Current Position) = dY (Change in Y) + Y last (Previous Position)
+
+      logData.AddData("LeftFollower:X", Double.toString(_leftXCoord));
+      logData.AddData("LeftFollower:Y", Double.toString(_leftYCoord));
+
+      _lastLPosition = getLeftChassisPositionInInches();
+      _leftLastXCoord = _leftXCoord;
+      _leftLastYCoord = _leftYCoord;
+      
+      logData.AddData("Chassis:LeftActPosInInches", Double.toString(getLeftChassisPositionInInches()));
+      logData.AddData("Chassis:LeftActVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
+    }
     
     // ======= Right Log Values ======================================================================
-    logData.AddData("Chassis:Rgt%VBusCmd", Double.toString(_rightPercentVBusCmd));
-    logData.AddData("Chassis:RgtTrgtCmdVelInIPS", Double.toString(_rightTargetVelInInchPerSec));
-    logData.AddData("Chassis:RgtTrgtVelInNUPer100mS", Double.toString(getRightMasterClosedLoopTarget()));
+    if(_isVerboseLoggingEnabled){
+      logData.AddData("Chassis:Rgt%VBusCmd", Double.toString(_rightPercentVBusCmd));
+      logData.AddData("Chassis:RgtTrgtCmdVelInIPS", Double.toString(_rightTargetVelInInchPerSec));
+      logData.AddData("Chassis:RgtTrgtVelInNUPer100mS", Double.toString(getRightMasterClosedLoopTarget()));
 
-    logData.AddData("Chassis:RgtActVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
-    logData.AddData("Chassis:RgtActVelInNUPer100mS", Double.toString(getRightEncoderVelocityInNUPer100mS()));
+      logData.AddData("Chassis:RgtActVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
+      logData.AddData("Chassis:RgtActVelInNUPer100mS", Double.toString(getRightEncoderVelocityInNUPer100mS()));
 
-    logData.AddData("Chassis:RgtActPosInNU", Double.toString(getRightEncoderPositionInNU()));
-    logData.AddData("Chassis:RgtActPosInInches", Double.toString(getRightChassisPositionInInches()));
+      logData.AddData("Chassis:RgtActPosInNU", Double.toString(getRightEncoderPositionInNU()));
+      logData.AddData("Chassis:RgtActPosInInches", Double.toString(getRightChassisPositionInInches()));
 
-    logData.AddData("Chassis:RgtClosedLoopErr", Double.toString(getRightEncoderClosedLoopError()));
-    logData.AddData("Chassis:RgtControlMode", _rightMaster.getControlMode().toString());
-    logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
+      logData.AddData("Chassis:RgtClosedLoopErr", Double.toString(getRightEncoderClosedLoopError()));
+      logData.AddData("Chassis:RgtControlMode", _rightMaster.getControlMode().toString());
+      logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
 
-    _sb.setLength(0);
-    _sb.append(Double.toString(_rightActiveSlotConfig.kF)); 
-    _sb.append(" | ");
-    _sb.append(Double.toString(_rightActiveSlotConfig.kP));
-    _sb.append(" | ");
-    _sb.append(Double.toString(_rightActiveSlotConfig.kI));
-    _sb.append(" | ");
-    _sb.append(Double.toString(_rightActiveSlotConfig.kD));
-    logData.AddData("Chassis:RgtPIDGains", _sb.toString());
+      _sb.setLength(0);
+      _sb.append(Double.toString(_rightActiveSlotConfig.kF)); 
+      _sb.append(" | ");
+      _sb.append(Double.toString(_rightActiveSlotConfig.kP));
+      _sb.append(" | ");
+      _sb.append(Double.toString(_rightActiveSlotConfig.kI));
+      _sb.append(" | ");
+      _sb.append(Double.toString(_rightActiveSlotConfig.kD));
+      logData.AddData("Chassis:RgtPIDGains", _sb.toString());
+    } else {
+      double rgtDPSegment = getLeftChassisPositionInInches() - _lastRPosition;
+      double rgtDXSegment = rgtDPSegment * Math.cos(_navX.getPathfinderYaw());
+      double rgtDYSegment = -rgtDPSegment * Math.sin(_navX.getPathfinderYaw());
+
+      _rightXCoord = _rightLastXCoord + rgtDXSegment;
+      _rightYCoord = _rightLastYCoord + rgtDYSegment;
+
+      logData.AddData("RgtFollower:X", Double.toString(_rightXCoord));
+      logData.AddData("RgtFollower:Y", Double.toString(_rightYCoord));
+
+      _lastRPosition = getRightChassisPositionInInches();
+      _rightLastXCoord = _rightXCoord;
+      _rightLastYCoord = _rightYCoord;
+
+      
+      logData.AddData("Chassis:RgtActPosInInches", Double.toString(getRightChassisPositionInInches()));
+      logData.AddData("Chassis:RgtActVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
+    }
   }
 
   @Override

@@ -18,8 +18,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 public class GeneralUtilities {
 
     /** Writes general info about the build to the Operator's Console */
-	public static String WriteBuildInfoToDashboard(String robotName) 
-	{
+	public static String WriteBuildInfoToDashboard(String robotName) {
 		String buildMsg = "?";
 		try {
     		//get the path of the currently executing jar file

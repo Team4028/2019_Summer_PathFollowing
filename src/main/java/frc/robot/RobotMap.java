@@ -15,8 +15,7 @@ import edu.wpi.first.wpilibj.SPI;
  * the wiring easier and significantly reduces the number of magic numbers
  * floating around.
  */
-public class RobotMap 
-{
+public class RobotMap {
 	// Drivers Station Gamepad USB Ports
 	public static final int DRIVER_GAMEPAD_USB_PORT = 0;
 	public static final int OPERATOR_GAMEPAD_USB_PORT = 1;
