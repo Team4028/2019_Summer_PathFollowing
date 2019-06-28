@@ -58,12 +58,14 @@ public class LogDataBE {
 	
 	/** Build a TSV (tab separated value) string for the header row */
 	public String BuildTSVHeader() {
-		return BuildTSVString(_names);
+		List<String> names = new ArrayList<String>(_names);
+		return BuildTSVString(names);
 	}
 
 	/** Build a TSV (tab separated value) string for a data row */
 	public String BuildTSVData() {
-		return BuildTSVString(_values);
+		List<String> values = new ArrayList<String>(_values);
+		return BuildTSVString(values);
 	}
 	
 	/** Build a TSV string from a List<string> */

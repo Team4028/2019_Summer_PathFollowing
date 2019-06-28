@@ -137,7 +137,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         _rightFollower.reset();
 
         // set chassis pid constants
-        _chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_LS);
+        _chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_HS);
 
         // initialize last loop timestamp
         _lastLoopTimeInMS = RobotController.getFPGATime() / 1000.0;

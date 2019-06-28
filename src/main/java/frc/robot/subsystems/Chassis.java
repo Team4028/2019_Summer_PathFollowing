@@ -87,8 +87,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
    */
 
   // 100 IPS
-  private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_HS = new MotorCtrPIDGainsBE(0.135, 0.15, 0.0, 1023.0 / 8000.0, 300, 1.00);
-  private final static MotorCtrPIDGainsBE PID_GAINS_RGT_HS = new MotorCtrPIDGainsBE(0.1225, 0.15, 0.0, 1023.0 / 8350.0, 300, 1.00);
+  private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_HS = new MotorCtrPIDGainsBE(0.17, 0, 5.0, 1023.0 / 6400.0, 300, 1.00);//(0.135, 0.15, 0.0, 1023.0 / 8000.0, 300, 1.00);
+  private final static MotorCtrPIDGainsBE PID_GAINS_RGT_HS = new MotorCtrPIDGainsBE(0.16, 0, 4.5, 1023.0 / 6900.0, 300, 1.00);//(0.1225, 0.15, 0.0, 1023.0 / 8350.0, 300, 1.00);
   
   // 0-40 IPS
   private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_LS = new MotorCtrPIDGainsBE(0.45, 0.1, 0.1, 1023.0 / 7150.0, 300, 1.00);
@@ -528,8 +528,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   }
 
   @Override
-  public void updateDashboard() 
-  {
+  public void updateDashboard() {
     SmartDashboard.putNumber("Chassis:LeftEncPosInNU", getLeftEncoderPositionInNU());
     SmartDashboard.putNumber("Chassis:LeftChasPosInInches", getLeftChassisPositionInInches());
     SmartDashboard.putNumber("Chassis:LeftEncClosedLoopTrgt", getLeftMasterClosedLoopTarget());
@@ -541,5 +540,10 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     SmartDashboard.putNumber("Chassis:RgtEncClosedLoopTrgt", getRightMasterClosedLoopTarget());
     SmartDashboard.putNumber("Chassis:RgtEncClosedLoopErr", getRightEncoderClosedLoopError());
     SmartDashboard.putNumber("Chassis:RgtMtrOutputVolts", getRightMotorOutputVoltage());
+
+    SmartDashboard.putNumber("Chassis:LeftXPosition", _leftXCoord);
+    SmartDashboard.putNumber("Chassis:LeftYPosition", _leftYCoord);
+    SmartDashboard.putNumber("Chassis:RightXPosition", _rightXCoord);
+    SmartDashboard.putNumber("Chassis:RightYPosition", _rightYCoord);
   }
 }

@@ -40,7 +40,7 @@ public class OI {
 
 		//															run time = 10 sec
 		//															target vel = 12 in/sec
-		_driverController.a.whenPressed(new DriveClosedLoopVelocity("3_40", Chassis.PID_PROFILE_SLOT_IDX_LS, 3, 40.0, 40.0));
+		_driverController.a.whenPressed(new DriveClosedLoopVelocity("3_40", Chassis.PID_PROFILE_SLOT_IDX_HS, 3, 80.0, 80.0));
 		_driverController.b.whenPressed(new StopChassis());
 		_driverController.x.whenPressed(new ZeroSensors());
 		//_driverController.y.whenPressed(new DriveOpenLoopStep(15, 0.025));

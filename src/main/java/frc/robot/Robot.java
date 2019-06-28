@@ -7,11 +7,11 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.RobotController;
 
 import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
 import frc.robot.commands.chassis.DriveWithControllers;
@@ -20,6 +20,7 @@ import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger2;
 import frc.robot.util.GeneralUtilities;
+import frc.robot.ux.PathChooser;
 import frc.robot.entities.LogDataBE;
 
 /**
@@ -41,6 +42,9 @@ public class Robot extends TimedRobot {
   // subsystems
   public static Chassis _Chassis = Chassis.getInstance();
 
+  // ux
+  public static PathChooser _pathChooser = PathChooser.getInstance();
+
   // class level working variables
   public static DataLogger2 _DataLogger = null;
 
@@ -54,8 +58,7 @@ public class Robot extends TimedRobot {
    * for any initialization code.
    */
   @Override
-  public void robotInit() 
-  {
+  public void robotInit() {
     // write the overall robot dashboard info
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
     SmartDashboard.putString("Robot Build", _buildMsg);
@@ -64,6 +67,7 @@ public class Robot extends TimedRobot {
 
     // https://www.chiefdelphi.com/t/improbable-java-slow-down-in-combining-doubles-and-strings/350331/17
     String forceDoubleToLoad = Double.toString(1234.56);
+
   }
 
   /********************************************************************************************
@@ -104,8 +108,7 @@ public class Robot extends TimedRobot {
    * This function is called periodically during autonomous.
    */
   @Override
-  public void autonomousPeriodic() 
-  {
+  public void autonomousPeriodic() {
     // run the command scheduler
     Scheduler.getInstance().run();
   }
@@ -115,8 +118,7 @@ public class Robot extends TimedRobot {
    ********************************************************************************************/
 
   @Override
-  public void teleopInit()
-  {    
+  public void teleopInit() {    
     // start honoring joysticks
     Command driveWJoyStick = new DriveWithControllers();
     driveWJoyStick.start();
@@ -128,8 +130,7 @@ public class Robot extends TimedRobot {
    /* This function is called periodically during teleop mode.
    */
   @Override
-  public void teleopPeriodic() 
-  {
+  public void teleopPeriodic() {
     // run scheduler
     Scheduler.getInstance().run();  
   }
@@ -159,8 +160,7 @@ public class Robot extends TimedRobot {
    * the robot is disabled.
    */
   @Override
-  public void disabledInit() 
-  {
+  public void disabledInit() {
     // remove all currently running commands
     Scheduler.getInstance().removeAll();
 
@@ -176,9 +176,7 @@ public class Robot extends TimedRobot {
   }
 
   @Override
-  public void disabledPeriodic() 
-  {
-  }
+  public void disabledPeriodic() {}
 
   /********************************************************************************************
    * General Support Methods
@@ -193,35 +191,36 @@ public class Robot extends TimedRobot {
   * LiveWindow and SmartDashboard integrated updating.
   */
   @Override
-  public void robotPeriodic() 
-  {
+  public void robotPeriodic() {
     // ============= Refresh Dashboard ============= 
     this.outputAllToDashboard();
 
     // if a notifier is running, we will call the logAllData method from inside the command so that we sync to the notifier period
-    if(!this.isDisabled() && (_DataLogger != null) && !_isNotifierRunning )
-    {
+    if(!this.isDisabled() && (_DataLogger != null) && !_isNotifierRunning ) {
       this.logAllData();
     }
   }
 
   /** Method to Push Data to ShuffleBoard */
-  private void outputAllToDashboard() 
-  {
+  private void outputAllToDashboard() {
       // ----------------------------------------------
       // each subsystem should add a call to a outputToSmartDashboard method
       // to push its data out to the dashboard
       // ----------------------------------------------
       if(_Chassis != null)              { _Chassis.updateDashboard(); }
       if(_navX != null)                 { _navX.updateDashboard(); }
+      if((_autonomousCommand != null) 
+              && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
+                                          { 
+                                            ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData); 
+                                          }
+      if(_pathChooser != null)          { _pathChooser.updateDashboard(); }
 	}
 
 	/** Method for Logging Data to the USB Stick plugged into the RoboRio */
-  public void logAllData() 
-  { 
+  public void logAllData() { 
     // TODO: Fix ~1sec delay on DataLogger
-      if(_DataLogger != null) 
-      {    	
+      if(_DataLogger != null) {    	
         // create a new, empty logging class
         _logData.InitData(RobotController.getFPGATime() / 1000);
         
@@ -235,7 +234,7 @@ public class Robot extends TimedRobot {
                                           { 
                                             ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData); 
                                           }
-
+        if(_pathChooser != null)           { _pathChooser.updateLogData(_logData); }                                  
 	    	_DataLogger.WriteDataLine(_logData);
     	}
   }
