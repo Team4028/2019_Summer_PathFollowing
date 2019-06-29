@@ -55,9 +55,16 @@ public class GeneralUtilities {
     public static boolean epsilonEquals(double a, double b, double epsilon) {
         return (a - epsilon <= b) && (a + epsilon >= b);
     }
-    
+	
     /** This method makes sure a value is between a max & min value */
  	public static int ClampValue(int original, int min, int max) {
  		return Math.min(max, Math.max(min, original));
- 	}
+	 }
+	 
+	public static boolean isStringEmpty(String input){
+        if(input != null && input.length() == 0){
+            return true;
+        }
+        return false;
+    }
 }

@@ -1,25 +1,24 @@
 package frc.robot.ux;
 
 import java.io.File;
-import java.util.Hashtable;
+import java.io.FilenameFilter;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
-import javax.lang.model.util.ElementScanner6;
-
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.command.CommandGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.entities.LogDataBE;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 
 /**
- * This class defines all of the auton choosers tha will be available on the
- * Dashboard
+ * This class dynamically builds the Auto Choosers from the path files on the RoboRio
  */
 public class PathChooser implements IBeakSquadDataPublisher {
 
     private SendableChooser _pathAction = new SendableChooser<>();
+
+    private static final String PATHS_FOLDER = "/home/lvuser/deploy/paths/output";
 
     // =====================================================================================
     // Define Singleton Pattern
@@ -32,36 +31,44 @@ public class PathChooser implements IBeakSquadDataPublisher {
 
     // private constructor for singleton pattern
     private PathChooser() {
-        File directory = new File("/home/lvuser/deploy/paths/output");
-        Hashtable<String, String> ht = new Hashtable<String, String>();
-        String[] paths = directory.list();
+        // get the folder on the RoboRio that contains the paths
+        File directory = new File(PATHS_FOLDER);
 
-        ht.put("Do_Nothing", "Do Nothing");
+        // get a list of filenames that match the filter
+        List<File> list = Arrays.asList(directory.listFiles(new FilenameFilter(){
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.endsWith(".pf1.csv"); // or something else
+            }}));
 
-        for(int i = 0; i < paths.length; i++){
-            String fileName = paths[i].split("[.]")[0];
-            if(!ht.containsKey(fileName)) {
-                ht.put(fileName, fileName.replace("_", " "));
-            }
-        }
-        //ht.forEach((k,v) -> System.out.println("Key : " + k + ", Value : " + v));
+        // sort Ascending on filename
+        list.sort(Comparator.comparing(File::getName));
 
-        // Auton Mode
-		//_pathAction.setDefaultOption("Do Nothing", AUTON_MODE.DO_NOTHING);
-		//_pathAction.addOption("Side Hatch", AUTON_MODE.SIDE_HATCH);
-		//_pathAction.addOption("Line Cross", AUTON_MODE.LINE_CROSS);
-		//_pathAction.addOption("Rocket", AUTON_MODE.ROCKET);
+        // build chooser with auton options
+        String fileName;
+        String fileDisplayName;
+        _pathAction.setDefaultOption("Do Nothing", "DO_NOTHING");
+        for (File autonFile : list) {
+            fileName = autonFile.getName();
+            fileDisplayName = fileName.replace("_", "");
+			_pathAction.addOption(fileDisplayName, fileName);
+		}
     }
 
     @Override
     public void updateDashboard() {
-       // SmartDashboard.putData("Paths", _pathAction);
-       // SmartDashboard.putString("PathChooser:PathAction", _pathAction.getSelected().toString());
+       SmartDashboard.putData("Paths", _pathAction);
+       SmartDashboard.putString("PathChooser:PathAction", get_AutonPathName());
 
     }
 
-    @Override
-    public void updateLogData(LogDataBE logData) {
+    public String get_AutonPathName()
+    {
+        return _pathAction.getSelected().toString();
+    }
 
+    @Override
+    public void updateLogData(LogDataBE logData, boolean isVerboseLoggingEnabled) {
+        // do nothing
     }
 }

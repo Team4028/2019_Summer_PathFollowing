@@ -7,14 +7,12 @@
 
 package frc.robot.util;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.entities.LogDataBE;
@@ -22,11 +20,13 @@ import frc.robot.interfaces.IDataLogger;
 import frc.robot.interfaces.LogDestination;
 
 /**
- * In this version logging is sync to the control loops
- * 		(so time it takes for the write to complete can affect loop times)
- * - each write flushs to the storage device.
+ * This version tries to make logging totally async to the control loops
+ * 
+ * - build queue of events 
+ * - create a separate thread that runs at a lower frequency to write to storage
+ * - flush any remaining events out in close method
  */
-public class DataLogger implements IDataLogger {
+public class DataLoggerV2 implements IDataLogger {
 
 	// working variables
 	private String _robotMode = "";
@@ -37,17 +37,20 @@ public class DataLogger implements IDataLogger {
 
 	private boolean _isLoggingEnabled;
 	private boolean _isHeadersWrittenAlready;
+	private Queue<LogDataBE> _logEventsBuffer = new ConcurrentLinkedQueue<LogDataBE>();
 	private String _logFolderPath;
 	private PrintWriter _writer;
 
+	ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+
 	// Constructor
-	public DataLogger(LogDestination logDestination) {
+	public DataLoggerV2(LogDestination logDestination) {
 		_logFolderPath = LoggingUtilities.CheckLogDestination(logDestination);
 
 		_isLoggingEnabled = !(GeneralUtilities.isStringEmpty(_logFolderPath));
 	}
 
-	// init loging
+	// start log queue polling thread
 	@Override
 	public void initLogging(String robotMode) {
 
@@ -55,17 +58,23 @@ public class DataLogger implements IDataLogger {
 			_robotMode = robotMode;
 			_logStartTimeStampinMS = RobotController.getFPGATime() / 1000;
 
-			// create the writer here
-			_writer = LoggingUtilities.CreateLogWriter(_logFolderPath, _robotMode);
+			// setup runnable to asyc flush log records to the target location
+			Runnable runnable = new Runnable() {
+				public void run() {
+					flushQueue();
+				}
+			};
+
+			// run the thread every second
+			//  we need to be carefull that the previous execution is not still running
+			service.scheduleAtFixedRate(runnable, 0, 1, TimeUnit.SECONDS);
 		}
 	}
 
-	// synchronously write a log record to the file
+	// synchronously add a log record to the queue
 	@Override
 	public void LogData(LogDataBE logData) {
-
 		if (_isLoggingEnabled) {
-
 			// capture the start timestamp if this is the 1st call
 			if (_logStartTimeStampinMS == 0) {
 				_logStartTimeStampinMS = logData.get_logDataTimeStampinMS();
@@ -77,8 +86,31 @@ public class DataLogger implements IDataLogger {
 			// add marker to log record (if might be empty)
 			logData.set_marker(_markerName);
 
+			// add log event to queue
+			synchronized (_logEventsBuffer) {
+				_logEventsBuffer.add(logData);
+			}
+		}
+	}
+
+	// run asynchronously to flush log records to permanent storage
+	private void flushQueue() {
+		// working variable outside loop
+		LogDataBE logData = null;
+
+		// stay here and loop until we empty the buffer
+		while (!_logEventsBuffer.isEmpty()) {
+			// hold the lock for as short a time as possible
+			synchronized (_logEventsBuffer) {
+				// get the log record at the front of the queue
+				logData = _logEventsBuffer.poll();
+			}
+
 			// optionally write the header row
 			if (!_isHeadersWrittenAlready) {
+				// we defer the creation of the writer to this background thread
+				_writer = LoggingUtilities.CreateLogWriter(_logFolderPath, _robotMode);
+
 				WriteHeaderLine(logData);
 				_isHeadersWrittenAlready = true;
 			}
@@ -88,8 +120,6 @@ public class DataLogger implements IDataLogger {
 		}
 	}
 
-
-
     // Write out a header (label) row to the file
     private void WriteHeaderLine(LogDataBE logData) {
 
@@ -97,7 +127,8 @@ public class DataLogger implements IDataLogger {
 			+ "LastScanDeltaMS" + "\t" 
 			+ "Marker" + "\t" 
 			+ "MarkerElapsedMS" + "\t" 
-			+ logData.BuildTSVHeader());
+			+ logData.BuildTSVHeader()
+			+ "\t" + "LogQueueDepth");
 
         _writer.flush();
     }
@@ -124,13 +155,15 @@ public class DataLogger implements IDataLogger {
 							+ lastScanDeltaInMS + "\t" 
 							+ markerName + "\t" 
 							+ markerElapsedInMSecs + "\t" 
-							+ dataToLog.BuildTSVData());
+							+ dataToLog.BuildTSVData()
+							+ "\t" + _logEventsBuffer.size());
 		} else {
 			_writer.print(startDeltaDiffInMSecs + "\t" 
 							+ lastScanDeltaInMS + "\t" 
 							+ "\t" 
 							+ "\t" 
-							+ dataToLog.BuildTSVData());
+							+ dataToLog.BuildTSVData()
+							+ "\t" + _logEventsBuffer.size());
 		}
 
 		_writer.flush();
@@ -142,6 +175,13 @@ public class DataLogger implements IDataLogger {
 	// called when telop or auton is disabled to flush any remaining events to disk
 	@Override
 	public void close() {
+		// stop the polling thread
+		service.shutdown();
+
+		// flush collected information to disk
+		if(!_logEventsBuffer.isEmpty()) {
+			flushQueue();
+		}
 	}
 
 	// ====== Support for markers in the log file ======

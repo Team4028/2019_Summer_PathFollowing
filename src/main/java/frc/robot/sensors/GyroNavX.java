@@ -79,7 +79,7 @@ public class GyroNavX implements IBeakSquadDataPublisher {
     }
 
     @Override
-    public void updateLogData(LogDataBE logData) 
+    public void updateLogData(LogDataBE logData, boolean isVerboseLoggingEnabled) 
     {
         logData.AddData("GyroNavX:RawYaw", Double.toString(getRawYaw()));
     }

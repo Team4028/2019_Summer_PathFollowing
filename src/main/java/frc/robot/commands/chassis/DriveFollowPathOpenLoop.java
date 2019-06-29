@@ -27,7 +27,7 @@ public class DriveFollowPathOpenLoop extends Command {
 
   // working variables
   private Chassis _chassis = Robot._Chassis;
-  private GyroNavX _navX = Robot._navX;
+  private GyroNavX _navX = Robot._NavX;
 
   private DistanceFollower _leftFollower;
   private DistanceFollower _rightFollower;

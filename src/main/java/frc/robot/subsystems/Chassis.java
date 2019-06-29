@@ -21,6 +21,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.RobotMap;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
+import frc.robot.util.GeneralUtilities;
 import frc.robot.entities.MotorCtrPIDGainsBE;
 import frc.robot.entities.LogDataBE;
 
@@ -39,8 +40,6 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   private static final int CAN_TIMEOUT_MSECS_PERIODIC = 0;
   private static final int BIG_NUMBER = (int) 1e6;
 
-  private boolean _isVerboseLoggingEnabled = false;
-
   //Graphing Paths Utility Varibales
   private double _leftXCoord;
   private double _leftYCoord;
@@ -57,7 +56,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   
   // Robot Physical Constants
   public static final double DRIVE_WHEEL_DIAMETER_IN = 7.0;
-  // private static final double TRACK_WIDTH_INCHES = 24.0;
+  public static final double TRACK_WIDTH_INCHES = 24.0;
   public static final double MAX_VEL_IN_PER_SEC = 135;
   // Encoder Constants
   private static double ENCODER_REVS_PER_WHEEL_REV = 12.0;
@@ -429,10 +428,10 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   }
 
   @Override
-  public void updateLogData(LogDataBE logData) 
+  public void updateLogData(LogDataBE logData, boolean isVerboseLoggingEnabled) 
   {
     // ======= Left Log Values ======================================================================
-    if(_isVerboseLoggingEnabled){
+    if(isVerboseLoggingEnabled){
       logData.AddData("Chassis:Left%VBusCmd", Double.toString(_leftPercentVBusCmd));
       logData.AddData("Chassis:LeftTrgtCmdVelInIPS", Double.toString(_leftTargetVelInInchPerSec));
       logData.AddData("Chassis:LeftTrgtVelInNUPer100mS", Double.toString(getLeftMasterClosedLoopTarget()));
@@ -448,13 +447,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
       
       _sb.setLength(0);
-      _sb.append(Double.toString(_leftActiveSlotConfig.kF)); 
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kF, 3))); 
       _sb.append(" | ");
-      _sb.append(Double.toString(_leftActiveSlotConfig.kP));
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kP, 3))); 
       _sb.append(" | ");
-      _sb.append(Double.toString(_leftActiveSlotConfig.kI));
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kI, 3))); 
       _sb.append(" | ");
-      _sb.append(Double.toString(_leftActiveSlotConfig.kD));
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:LeftPIDGains", _sb.toString());
     } else {
       // EXPLANATION OF STATE ESTIMATION
@@ -482,7 +481,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     }
     
     // ======= Right Log Values ======================================================================
-    if(_isVerboseLoggingEnabled){
+    if(isVerboseLoggingEnabled){
       logData.AddData("Chassis:Rgt%VBusCmd", Double.toString(_rightPercentVBusCmd));
       logData.AddData("Chassis:RgtTrgtCmdVelInIPS", Double.toString(_rightTargetVelInInchPerSec));
       logData.AddData("Chassis:RgtTrgtVelInNUPer100mS", Double.toString(getRightMasterClosedLoopTarget()));
@@ -498,13 +497,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
 
       _sb.setLength(0);
-      _sb.append(Double.toString(_rightActiveSlotConfig.kF)); 
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kF, 3))); 
       _sb.append(" | ");
-      _sb.append(Double.toString(_rightActiveSlotConfig.kP));
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kP, 3))); 
       _sb.append(" | ");
-      _sb.append(Double.toString(_rightActiveSlotConfig.kI));
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kI, 3))); 
       _sb.append(" | ");
-      _sb.append(Double.toString(_rightActiveSlotConfig.kD));
+      _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:RgtPIDGains", _sb.toString());
     } else {
       double rgtDPSegment = getLeftChassisPositionInInches() - _lastRPosition;

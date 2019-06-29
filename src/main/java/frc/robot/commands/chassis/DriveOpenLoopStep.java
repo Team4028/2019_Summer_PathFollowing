@@ -53,7 +53,7 @@ public class DriveOpenLoopStep extends Command
     }
 
     _chassis.zeroSensors();
-    Robot._navX.zeroYaw();
+    Robot._NavX.zeroYaw();
 
     System.out.println(">>>>>>>>> Step command started! <<<<<<<<<<");
   }

@@ -12,7 +12,7 @@ import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
 
-public class DriveClosedLoopStep extends Command 
+public class DriveClosedLoopStepVelocity extends Command 
 {
 
   // working variables
@@ -29,7 +29,7 @@ public class DriveClosedLoopStep extends Command
 
   public final long RUN_EACH_STEP_IN_MS = 250;
 
-  public DriveClosedLoopStep(int targetTotalRunTimeInSec, double ipsStep, int pidSlotIndex) 
+  public DriveClosedLoopStepVelocity(int targetTotalRunTimeInSec, double ipsStep, int pidSlotIndex) 
   {
     // Use requires() here to declare subsystem dependencies
     requires(_chassis);
@@ -58,7 +58,7 @@ public class DriveClosedLoopStep extends Command
     _chassis.setActivePIDConstantsSlot(_pidSlotIndex);
 
     _chassis.zeroSensors();
-    Robot._navX.zeroYaw();
+    Robot._NavX.zeroYaw();
 
     System.out.println(">>>>>>>>> Step command started! <<<<<<<<<<");
   }

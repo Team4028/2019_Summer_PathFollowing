@@ -16,9 +16,12 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
 import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
+import frc.robot.interfaces.IDataLogger;
+import frc.robot.interfaces.LogDestination;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
-import frc.robot.util.DataLogger2;
+import frc.robot.util.DataLogger;
+import frc.robot.util.DataLoggerV2;
 import frc.robot.util.GeneralUtilities;
 import frc.robot.ux.PathChooser;
 import frc.robot.entities.LogDataBE;
@@ -37,21 +40,22 @@ public class Robot extends TimedRobot {
   // Note: add each one to the outputAllToDashboard & logAllData methods below
 
   // sensors
-  public static GyroNavX _navX = GyroNavX.getInstance();
+  public static GyroNavX _NavX = GyroNavX.getInstance();
 
   // subsystems
   public static Chassis _Chassis = Chassis.getInstance();
 
   // ux
-  public static PathChooser _pathChooser = PathChooser.getInstance();
+  private static PathChooser _pathChooser = PathChooser.getInstance();
 
   // class level working variables
-  public static DataLogger2 _DataLogger = null;
-
+  public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.NONE);
   private String _buildMsg = "?";
   private Command _autonomousCommand = null;
   private boolean _isNotifierRunning = false;
-  private LogDataBE _logData = new LogDataBE();
+  private LogDataBE _logData;
+
+  private static final boolean IS_VERBOSE_LOGGING_ENABLED = true;
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -63,7 +67,7 @@ public class Robot extends TimedRobot {
     _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
     SmartDashboard.putString("Robot Build", _buildMsg);
 
-    _navX.zeroYaw();
+    _NavX.zeroYaw();
 
     // https://www.chiefdelphi.com/t/improbable-java-slow-down-in-combining-doubles-and-strings/350331/17
     String forceDoubleToLoad = Double.toString(1234.56);
@@ -89,10 +93,10 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     // zero sensors before auton
     _Chassis.zeroSensors();
-    _navX.zeroYaw();
+    _NavX.zeroYaw();
 
     // init data logging
-    _DataLogger = DataLogger2.setupLogging("Auton"); 
+    _DataLogger.initLogging("Auton"); 
 
     // setup auton command
     _autonomousCommand = new DriveFollowPathClosedLoop("LeftTurn_v2", this::logAllData);
@@ -118,13 +122,13 @@ public class Robot extends TimedRobot {
    ********************************************************************************************/
 
   @Override
-  public void teleopInit() {    
+  public void teleopInit() {   
     // start honoring joysticks
     Command driveWJoyStick = new DriveWithControllers();
     driveWJoyStick.start();
 
     // init data logging
-    _DataLogger = DataLogger2.setupLogging("Telop"); // init data logging	
+    _DataLogger.initLogging("Telop"); // init data logging	
   }
 
    /* This function is called periodically during teleop mode.
@@ -163,6 +167,8 @@ public class Robot extends TimedRobot {
   public void disabledInit() {
     // remove all currently running commands
     Scheduler.getInstance().removeAll();
+    // reset auton
+    _autonomousCommand = null;
 
     // clear commands in all motor controllers
     _Chassis.stop(false);
@@ -208,34 +214,37 @@ public class Robot extends TimedRobot {
       // to push its data out to the dashboard
       // ----------------------------------------------
       if(_Chassis != null)              { _Chassis.updateDashboard(); }
-      if(_navX != null)                 { _navX.updateDashboard(); }
+      if(_NavX != null)                 { _NavX.updateDashboard(); }
       if((_autonomousCommand != null) 
               && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
                                           { 
-                                            ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData); 
+                                            ((IBeakSquadDataPublisher) _autonomousCommand).updateDashboard(); 
                                           }
       if(_pathChooser != null)          { _pathChooser.updateDashboard(); }
 	}
 
 	/** Method for Logging Data to the USB Stick plugged into the RoboRio */
   public void logAllData() { 
-    // TODO: Fix ~1sec delay on DataLogger
-      if(_DataLogger != null) {    	
+
+      if(_DataLogger != null) {  
+
         // create a new, empty logging class
-        _logData.InitData(RobotController.getFPGATime() / 1000);
+        _logData = new LogDataBE(RobotController.getFPGATime() / 1000);
         
         // ----------------------------------------------
         // ask each subsystem that exists to add its data
         // ----------------------------------------------
-        if(_Chassis != null)              { _Chassis.updateLogData(_logData); }
-        if(_navX != null)                 { _navX.updateLogData(_logData); }
+        if(_Chassis != null)              { _Chassis.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+        if(_NavX != null)                 { _NavX.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+
+        // if the auton command is set 
         if((_autonomousCommand != null) 
               && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
-                                          { 
-                                            ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData); 
-                                          }
-        if(_pathChooser != null)           { _pathChooser.updateLogData(_logData); }                                  
-	    	_DataLogger.WriteDataLine(_logData);
+                                          { ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+
+        if(_pathChooser != null)          { _pathChooser.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }    
+
+	    	_DataLogger.LogData(_logData);
     	}
   }
 }

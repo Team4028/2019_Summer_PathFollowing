@@ -10,10 +10,19 @@ package frc.robot.interfaces;
 import frc.robot.entities.LogDataBE;
 
 /**
- * This interface defines the methods all Subsystems classes must implement
+ * Add your docs here.
  */
-public interface IBeakSquadDataPublisher {
-    public void updateLogData(LogDataBE logData, boolean isVesboseMode);
-	
-	public void updateDashboard();
+public interface IDataLogger {
+
+    public void initLogging(String robotMode);
+
+	public void LogData(LogDataBE logData);
+
+	public void close();
+
+	// ====== Support for markers in the log file ======
+	// can by used to flag certain areas in the file
+	public void setMarker(String markerName);
+
+	public void clearMarker();
 }

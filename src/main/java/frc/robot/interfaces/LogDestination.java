@@ -7,13 +7,12 @@
 
 package frc.robot.interfaces;
 
-import frc.robot.entities.LogDataBE;
-
 /**
- * This interface defines the methods all Subsystems classes must implement
+ * Add your docs here.
  */
-public interface IBeakSquadDataPublisher {
-    public void updateLogData(LogDataBE logData, boolean isVesboseMode);
-	
-	public void updateDashboard();
+public enum LogDestination
+{
+    NONE,
+    USB,
+    ROBORIO
 }

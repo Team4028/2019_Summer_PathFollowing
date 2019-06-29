@@ -13,7 +13,7 @@ import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
 
 // Command used during Talon Velocity Loop Tuning
-public class DriveClosedLoopVelocity extends Command {
+public class DriveClosedLoopFixedVelocity extends Command {
 
   // working variables
   private Chassis _chassis = Robot._Chassis;
@@ -28,7 +28,7 @@ public class DriveClosedLoopVelocity extends Command {
   // ======================================================================================
   // constructor  
   // ======================================================================================
-  public DriveClosedLoopVelocity(String markerName, int pidSlotIndex, long runTimeInSec, double leftTargetVelocityInInchesPerSec, double rightTargetVelocityInInchesPerSec) 
+  public DriveClosedLoopFixedVelocity(String markerName, int pidSlotIndex, long runTimeInSec, double leftTargetVelocityInInchesPerSec, double rightTargetVelocityInInchesPerSec) 
   {
     // Use requires() here to declare subsystem dependencies
     requires(_chassis);
@@ -59,7 +59,7 @@ public class DriveClosedLoopVelocity extends Command {
     }
 
     _chassis.zeroSensors();
-    Robot._navX.zeroYaw();
+    Robot._NavX.zeroYaw();
   }
 
   // Called repeatedly when this Command is scheduled to run

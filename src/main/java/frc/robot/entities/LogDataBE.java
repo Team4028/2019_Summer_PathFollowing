@@ -17,15 +17,9 @@ public class LogDataBE {
 	private String _markerName = null;
 
 	// constructor(s)
-	public LogDataBE() {
+	public LogDataBE(long logDataTimeStampinMS) {
 		_names = new ArrayList<String>();
 		_values = new ArrayList<String>();
-	}
-		
-	/** Discard any data currently being held */
-	public void InitData(long logDataTimeStampinMS) {
-		_names.clear();
-		_values.clear();
 
 		_logDataTimeStampinMS = logDataTimeStampinMS;
 	}
@@ -48,6 +42,11 @@ public class LogDataBE {
 	public void set_marker(String markerName)
 	{
 		_markerName = markerName;
+	}
+
+	public String get_marker()
+	{
+		return _markerName;
 	}
 
 	/** Add a field name/value pair to the log record */

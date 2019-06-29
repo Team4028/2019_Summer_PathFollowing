@@ -14,7 +14,7 @@ import java.io.IOException;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
-
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Robot;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
@@ -33,27 +33,23 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
 
     // working variables
     private Chassis _chassis = Robot._Chassis;
-    private GyroNavX _navX = Robot._navX;
+    private GyroNavX _navX = Robot._NavX;
 
     private DistanceFollower _leftFollower;
     private DistanceFollower _rightFollower;
 
-    // Class Level Constant
-    private static final double KH = 5; // This constant multiplies the effect of the heading 
-                                        // compensation on the motor output (Original equation assumes
-                                        // open loop [-1 - 1], so this compensates for closed loop)
-
     //Graphing Paths Utility Varibales
     private double _leftXCoord;
     private double _leftYCoord;
-    private double _lastLPosition = 0;
+    private double _leftLastPosition = 0;
     private double _leftLastXCoord = 0;
-    private double _leftLastYCoord = 12;
+    private double _leftLastYCoord = 0.0 + Chassis.TRACK_WIDTH_INCHES / 2.0;    // distance from Robot Centerline
+
     private double _rightXCoord;
     private double _rightYCoord;
-    private double _lastRPosition = 0;
+    private double _rightLastPosition = 0;
     private double _rightLastXCoord = 0;
-    private double _rightLastYCoord = -12;
+    private double _rightLastYCoord = 0.0 - Chassis.TRACK_WIDTH_INCHES / 2.0;   // distance from Robot Centerline
 
     // create notifier that will 
     private Notifier _notifier = new Notifier(this::followPath);
@@ -99,6 +95,14 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
                             = new EncoderFollowerPIDGainsBE(1.4, 0.0, 1.0, 0.0);
 
+    // This constant multiplies the effect of the heading 
+    // compensation on the motor output (Original equation assumes
+    // open loop [-1 - 1], so this compensates for closed loop)
+    private static final double KH = 5.0; 
+
+    //  robot drives have a voltage "dead-zone" around zero within which the torque generated 
+    //  by the motors is insufficient to overcome frictional losses in the drive. 
+    private static final double V_INTERCEPT = 4.0;
     // ======================================================================================
     // constructor
     // ======================================================================================
@@ -136,8 +140,11 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         _leftFollower.reset();
         _rightFollower.reset();
 
+        // determine what chassis pid constants to use
+        int chassisPidConstant = Chassis.PID_PROFILE_SLOT_IDX_HS;   // todo: determine this dynamically
+
         // set chassis pid constants
-        _chassis.setActivePIDConstantsSlot(Chassis.PID_PROFILE_SLOT_IDX_HS);
+        _chassis.setActivePIDConstantsSlot(chassisPidConstant);
 
         // initialize last loop timestamp
         _lastLoopTimeInMS = RobotController.getFPGATime() / 1000.0;
@@ -207,11 +214,19 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         double right_speed = 
                 _rightFollower.calculate(_chassis.getRightChassisPositionInInches() - _rightStartingDistance);
 
+        // if we have a non-zero command add the V Intercept 
         if(left_speed > 0.1) {
-            left_speed = left_speed + 4.0;
+            left_speed = left_speed + V_INTERCEPT;
         }
+        else if(left_speed < -0.1) {
+            left_speed = left_speed - V_INTERCEPT;
+        }
+
         if(right_speed > 0.1) {
-            right_speed = right_speed + 4.0;
+            right_speed = right_speed + V_INTERCEPT;
+        }
+        else if(right_speed < -0.1) {
+            right_speed = right_speed - V_INTERCEPT;
         }
 
         // Calculate any correction we need based on the current and desired heading
@@ -220,75 +235,85 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
         double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;
 
-        // Send the % outputs to the drivetrain
+        // Send the IPS target velocities to the drivetrain
         _chassis.setClosedLoopVelocityCmd(left_speed - turn, right_speed + turn);
     
-            // if a logging method delegate was passed in, call it 
+        // if a logging method delegate was passed in, call it 
         if (_loggingMethodDelegate != null) {
             _loggingMethodDelegate.run();
         }
     }
 
     @Override
-    public void updateLogData(LogDataBE logData) {
+    public void updateLogData(LogDataBE logData, boolean isVerboseLoggngEnabled) {
         // use stringbuilder instead of concat for perf
         if (!_leftFollower.isFinished()) {
 
             _sb.setLength(0);
-            _sb.append(Double.toString(_leftFollowerGains.KP));
-            _sb.append(" | ");
-            _sb.append(Double.toString(_leftFollowerGains.KI)); 
-            _sb.append(" | ");
-            _sb.append(Double.toString(_leftFollowerGains.KD)); 
-            _sb.append(" | ");
-            _sb.append(Double.toString(_leftFollowerGains.KV)); 
-            _sb.append(" | ");
-            _sb.append(Double.toString(_leftFollowerGains.KA));
-
+            _sb.append("p: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KP, 3)));
+            _sb.append(" |i: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KI, 3)));
+            _sb.append(" |d: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KD, 3)));
+            _sb.append(" |v: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KV, 3)));
+            _sb.append(" |a: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KA, 3)));
+            _sb.append(" |h: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(KH, 3)));
             logData.AddData("LeftFollower:Gains", _sb.toString());
     
+            // log segment target data
             Segment currentLeftSegment = _leftFollower.getSegment();
             logData.AddData("LeftFollower:SegmentPos", Double.toString(currentLeftSegment.position));
             logData.AddData("LeftFollower:SegmentVel", Double.toString(currentLeftSegment.velocity));
             logData.AddData("LeftFollower:SegmentAccel", Double.toString(currentLeftSegment.acceleration));
             logData.AddData("LeftFollower:Heading", Double.toString(currentLeftSegment.heading));
             
-            double leftDPSegment = currentLeftSegment.position - _lastLPosition;
+            // log calculated target position relative to start
+            double leftDPSegment = currentLeftSegment.position - _leftLastPosition;
             double leftDXSegment = leftDPSegment * Math.cos(currentLeftSegment.heading);
             double leftDYSegment = -leftDPSegment * Math.sin(currentLeftSegment.heading);
 
             _leftXCoord = _leftLastXCoord + leftDXSegment;
             _leftYCoord = _leftLastYCoord + leftDYSegment;
 
-            logData.AddData("LeftFollower:X", Double.toString(_leftXCoord));
-            logData.AddData("LeftFollower:Y", Double.toString(_leftYCoord));
+            logData.AddData("LeftFollower:X", Double.toString(GeneralUtilities.roundDouble(_leftXCoord, 1)));
+            logData.AddData("LeftFollower:Y", Double.toString(GeneralUtilities.roundDouble(_leftYCoord, 1)));
 
-            _lastLPosition = currentLeftSegment.position;
+            // snapshot values for next loop cycle
+            _leftLastPosition = currentLeftSegment.position;
             _leftLastXCoord = _leftXCoord;
             _leftLastYCoord = _leftYCoord;
         }
     
         if (!_rightFollower.isFinished()) {
-            _sb.setLength(0);
-            _sb.append(Double.toString(_rightFollowerGains.KP));
-            _sb.append(" | ");
-            _sb.append(Double.toString(_rightFollowerGains.KI)); 
-            _sb.append(" | ");
-            _sb.append(Double.toString(_rightFollowerGains.KD)); 
-            _sb.append(" | ");
-            _sb.append(Double.toString(_rightFollowerGains.KV)); 
-            _sb.append(" | ");
-            _sb.append(Double.toString(_rightFollowerGains.KA));
 
+            _sb.setLength(0);
+            _sb.append("p: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KP, 3)));
+            _sb.append(" |i: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KI, 3)));
+            _sb.append(" |d: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KD, 3)));
+            _sb.append(" |v: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KV, 3)));
+            _sb.append(" |a: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KA, 3)));
+            _sb.append(" |h: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(KH, 3)));
             logData.AddData("RgtFollower:Gains", _sb.toString());
           
+            // log segment target data
             Segment currentRightSegment = _rightFollower.getSegment();
             logData.AddData("RgtFollower:SegmentPos", Double.toString(currentRightSegment.position));
             logData.AddData("RgtFollower:SegmentVel", Double.toString(currentRightSegment.velocity));
             logData.AddData("RgtFollower:SegmentAccel", Double.toString(currentRightSegment.acceleration));
             logData.AddData("RGTFollower:Heading", Double.toString(currentRightSegment.heading));
 
-            double rightDPSegment = currentRightSegment.position - _lastRPosition;
+            // log calculated target position relative to start
+            double rightDPSegment = currentRightSegment.position - _rightLastPosition;
             double rightDXSegment = rightDPSegment * Math.cos(currentRightSegment.heading);
             double rightDYSegment = -rightDPSegment * Math.sin(currentRightSegment.heading);
 
@@ -298,12 +323,16 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
             logData.AddData("RgtFollower:X", Double.toString(_rightXCoord));
             logData.AddData("RgtFollower:Y", Double.toString(_rightYCoord));
 
-            _lastRPosition = currentRightSegment.position;
+            // snapshot values for next loop cycle
+            _rightLastPosition = currentRightSegment.position;
             _rightLastXCoord = _rightXCoord;
             _rightLastYCoord = _rightYCoord;
         }
-        logData.AddData("PathFollower:KH", Double.toString(KH));
     }
+
     @Override
-    public void updateDashboard() {}
+    public void updateDashboard() 
+    {
+        SmartDashboard.putString("PathFollower:PathName", _pathName);
+    }
 }
