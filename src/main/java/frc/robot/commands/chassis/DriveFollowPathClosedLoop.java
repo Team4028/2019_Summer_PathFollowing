@@ -107,8 +107,10 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         requires(_chassis);
         setInterruptible(true);
 
-        _pathName = pathName;
-        importPath(pathName);
+        if(pathName != "Do_Nothing") { //Handle "Do_Nothing" auton
+            _pathName = pathName;
+            importPath(pathName);
+        }
 
         _leftFollower.configurePIDVA(_leftFollowerGains.KP, 
                                         _leftFollowerGains.KI, 

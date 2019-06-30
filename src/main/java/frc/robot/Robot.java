@@ -95,7 +95,7 @@ public class Robot extends TimedRobot {
     _DataLogger = DataLogger2.setupLogging("Auton"); 
 
     // setup auton command
-    _autonomousCommand = new DriveFollowPathClosedLoop("LeftTurn_v2", this::logAllData);
+    _autonomousCommand = new DriveFollowPathClosedLoop(_pathChooser.getSelectedPath(), this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
