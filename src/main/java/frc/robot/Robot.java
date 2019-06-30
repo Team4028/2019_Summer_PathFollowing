@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
+import frc.robot.commands.chassis.DriveFollowPathOpenLoop;
 import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.interfaces.IDataLogger;
@@ -52,7 +53,7 @@ public class Robot extends TimedRobot {
 
   // class level working variables
   // flushing at -1 means only bufer and write when disabled
-  public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.USB, -1);
+  public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.NONE, -1);
   private String _buildMsg = "?";
   private Command _autonomousCommand = null;
   private boolean _isNotifierRunning = false;
@@ -100,14 +101,13 @@ public class Robot extends TimedRobot {
 
     // init data logging
     _DataLogger.initLogging("Auton"); 
-
+    _isNotifierRunning = true;
     // setup auton command
-    _autonomousCommand = new DriveFollowPathClosedLoop("LeftTurn_v2", this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2", this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
       _autonomousCommand.start();
-      _isNotifierRunning = true;
     }
   }
 
@@ -126,6 +126,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {   
+    // zero sensors at start of telop
+    _Chassis.zeroSensors();
+    _NavX.zeroYaw();
+
     // start honoring joysticks
     Command driveWJoyStick = new DriveWithControllers();
     driveWJoyStick.start();

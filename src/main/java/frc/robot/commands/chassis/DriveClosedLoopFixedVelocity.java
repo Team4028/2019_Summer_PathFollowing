@@ -50,7 +50,7 @@ public class DriveClosedLoopFixedVelocity extends Command {
     _startTimeInMS = RobotController.getFPGATime() / 1000;
 
     // set correct pid constants to use
-    _chassis.setActivePIDConstantsSlot(_pidSlotIndex);
+    _chassis.setActivePIDProfileSlot(_pidSlotIndex);
 
     // set marker in log file records so we can tell when the command started in telop mode
     if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())

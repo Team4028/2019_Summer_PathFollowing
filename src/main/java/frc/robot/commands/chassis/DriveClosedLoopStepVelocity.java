@@ -55,7 +55,7 @@ public class DriveClosedLoopStepVelocity extends Command
     }
 
     // set correct pid constants to use
-    _chassis.setActivePIDConstantsSlot(_pidSlotIndex);
+    _chassis.setActivePIDProfileSlot(_pidSlotIndex);
 
     _chassis.zeroSensors();
     Robot._NavX.zeroYaw();

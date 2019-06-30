@@ -74,7 +74,6 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   private double _leftPercentVBusCmd;
   private double _rightPercentVBusCmd;
 
-  private int _activePIDProfileSlotIdx = 0;
   private StringBuilder _sb = new StringBuilder(50);
 
   /**
@@ -90,9 +89,12 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   private final static MotorCtrPIDGainsBE PID_GAINS_RGT_HS = new MotorCtrPIDGainsBE(0.16, 0, 4.5, 1023.0 / 6900.0, 300, 1.00);//(0.1225, 0.15, 0.0, 1023.0 / 8350.0, 300, 1.00);
   
   // 0-40 IPS
-  private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_LS = new MotorCtrPIDGainsBE(0.45, 0.1, 0.1, 1023.0 / 7150.0, 300, 1.00);
-  private final static MotorCtrPIDGainsBE PID_GAINS_RGT_LS = new MotorCtrPIDGainsBE(0.45, 0.1, 0.1, 1023.0 / 7117.0, 300, 1.00);
+  private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_LS = new MotorCtrPIDGainsBE(0.170, 0, 2, 1023.0 / 5800.0, 300, 1.00);
+  private final static MotorCtrPIDGainsBE PID_GAINS_RGT_LS = new MotorCtrPIDGainsBE(0.175, 0, 2, 1023.0 / 6200.0, 300, 1.00);
  
+  //private final static MotorCtrPIDGainsBE PID_GAINS_LEFT_LS = new MotorCtrPIDGainsBE(0.25, 0, 0, 1023.0 / 5800.0, 300, 1.00);
+  //private final static MotorCtrPIDGainsBE PID_GAINS_RGT_LS = new MotorCtrPIDGainsBE(0.25, 0, 0, 1023.0 / 6500.0, 300, 1.00);
+
   private SlotConfiguration _leftActiveSlotConfig = new SlotConfiguration();
   private SlotConfiguration _rightActiveSlotConfig = new SlotConfiguration();
 
@@ -124,14 +126,14 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     _leftSlave2.follow(_leftMaster);
 
     // high speed
-    setPIDParams(_leftMaster, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS);
-    setPIDParams(_leftSlave1, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS);
-    setPIDParams(_leftSlave2, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS);
+    configPIDSlot(_leftMaster, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS);
+    configPIDSlot(_leftSlave1, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS);
+    configPIDSlot(_leftSlave2, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_LEFT_HS);
 
     // low speed
-    setPIDParams(_leftMaster, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS);
-    setPIDParams(_leftSlave1, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS);
-    setPIDParams(_leftSlave2, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS);
+    configPIDSlot(_leftMaster, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS);
+    configPIDSlot(_leftSlave1, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS);
+    configPIDSlot(_leftSlave2, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_LEFT_LS);
 
     // =============================================
     // define chassis right side motor controllers
@@ -150,14 +152,14 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     _rightSlave2.follow(_rightMaster);
 
     // high speed
-    setPIDParams(_rightMaster, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS);
-    setPIDParams(_rightSlave1, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS);
-    setPIDParams(_rightSlave2, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS);
+    configPIDSlot(_rightMaster, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS);
+    configPIDSlot(_rightSlave1, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS);
+    configPIDSlot(_rightSlave2, PID_PROFILE_SLOT_IDX_HS, PID_GAINS_RGT_HS);
 
     // low speed
-    setPIDParams(_rightMaster, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS);
-    setPIDParams(_rightSlave1, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS);
-    setPIDParams(_rightSlave2, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS);
+    configPIDSlot(_rightMaster, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS);
+    configPIDSlot(_rightSlave1, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS);
+    configPIDSlot(_rightSlave2, PID_PROFILE_SLOT_IDX_LS, PID_GAINS_RGT_LS);
   }
 
   private TalonSRX configMasterMotor(int canAddress) {
@@ -194,6 +196,16 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     driveMotor.setNeutralMode(NeutralMode.Brake);
 
     return driveMotor;
+  }
+
+  private void configPIDSlot(TalonSRX talon, int pidSlotIDX, MotorCtrPIDGainsBE pidGains) {
+    // Config the Velocity closed loop gains
+    talon.config_kF(pidSlotIDX, pidGains.KF, CAN_TIMEOUT_MSECS_INIT);
+    talon.config_kP(pidSlotIDX, pidGains.KP, CAN_TIMEOUT_MSECS_INIT);
+    talon.config_kI(pidSlotIDX, pidGains.KI, CAN_TIMEOUT_MSECS_INIT);
+    talon.config_kD(pidSlotIDX, pidGains.KD, CAN_TIMEOUT_MSECS_INIT);
+
+    talon.configMaxIntegralAccumulator(pidSlotIDX, pidGains.KMaxI, CAN_TIMEOUT_MSECS_INIT);
   }
 
   @Override
@@ -243,6 +255,9 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     {
       setBrakeMode(NeutralMode.Coast);
     }
+
+    _leftTargetVelInInchPerSec = 0;
+    _rightTargetVelInInchPerSec = 0;
   }
 
   public void setBrakeMode(NeutralMode mode)
@@ -256,16 +271,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     if (_rightSlave2 != null)  _rightSlave2.setNeutralMode(mode);
   }
 
-  public void setActivePIDConstantsSlot(int slotIdx)
+  public void setActivePIDProfileSlot(int slotIdx)
   {
     _leftMaster.selectProfileSlot(slotIdx, PID_PROFILE_PID_IDX_PRIMARY);
     _rightMaster.selectProfileSlot(slotIdx, PID_PROFILE_PID_IDX_PRIMARY);
 
-
-    _leftMaster.getSlotConfigs(_leftActiveSlotConfig, slotIdx, CAN_TIMEOUT_MSECS_INIT);
-    _rightMaster.getSlotConfigs(_rightActiveSlotConfig, slotIdx, CAN_TIMEOUT_MSECS_INIT);
-
-    _activePIDProfileSlotIdx = slotIdx;
+    _leftMaster.getSlotConfigs(_leftActiveSlotConfig, slotIdx, CAN_TIMEOUT_MSECS_PERIODIC);
+    _rightMaster.getSlotConfigs(_rightActiveSlotConfig, slotIdx, CAN_TIMEOUT_MSECS_PERIODIC);
   }
 
   public void setOpenLoopVelocityCmd(double leftPercentVBusCmd, double rightPercentVBusCmd)
@@ -302,16 +314,6 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     double nuPer100mS = encoderRevPer100mS * NU_PER_ENCODER_REV;
 
     return nuPer100mS;
-  }
-
-  private void setPIDParams(TalonSRX talon, int pidSlotIDX, MotorCtrPIDGainsBE pidGains) {
-    // Config the Velocity closed loop gains
-    talon.config_kF(pidSlotIDX, pidGains.KF, CAN_TIMEOUT_MSECS_INIT);
-    talon.config_kP(pidSlotIDX, pidGains.KP, CAN_TIMEOUT_MSECS_INIT);
-    talon.config_kI(pidSlotIDX, pidGains.KI, CAN_TIMEOUT_MSECS_INIT);
-    talon.config_kD(pidSlotIDX, pidGains.KD, CAN_TIMEOUT_MSECS_INIT);
-
-    talon.configMaxIntegralAccumulator(pidSlotIDX, pidGains.KMaxI, CAN_TIMEOUT_MSECS_INIT);
   }
 
   // Postion
@@ -449,11 +451,11 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       _sb.setLength(0);
       _sb.append("ff: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kF, 3))); 
-      _sb.append(" |p ");
+      _sb.append(" |p: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kP, 3))); 
-      _sb.append(" |i");
+      _sb.append(" |i: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kI, 3))); 
-      _sb.append(" |d ");
+      _sb.append(" |d: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:LeftPIDGains", _sb.toString());
     } else {
