@@ -15,6 +15,7 @@ public class LogDataBE {
 	private long _logStartTimeStampinMS;
 	private long _logDataTimeStampinMS;
 	private String _markerName = null;
+	private long _logQueueDepth;
 
 	// constructor(s)
 	public LogDataBE(long logDataTimeStampinMS) {
@@ -47,6 +48,16 @@ public class LogDataBE {
 	public String get_marker()
 	{
 		return _markerName;
+	}
+
+	public void set_logQueueDepth(long logQueueDepth)
+	{
+		_logQueueDepth = logQueueDepth;
+	}
+
+	public long get_logQueueDepth()
+	{
+		return _logQueueDepth;
 	}
 
 	/** Add a field name/value pair to the log record */

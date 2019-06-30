@@ -10,7 +10,7 @@ public class DriveWithControllers extends Command {
 
   // working variables
   private Chassis _chassis = Robot._Chassis;
-  private OI _oi = OI.getInstance();
+  private OI _oi = Robot._OI;
 
   // ======================================================================================
   // constructor  

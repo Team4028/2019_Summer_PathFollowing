@@ -12,6 +12,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import edu.wpi.first.wpilibj.RobotController;
@@ -31,49 +32,70 @@ public class DataLoggerV2 implements IDataLogger {
 	// working variables
 	private String _robotMode = "";
 	private long _logStartTimeStampinMS;
-	private long _lastScanTimeStampinMS;
+	private long _lastLogRecordTimeStampinMS;
 	private long _markerStartTimeStampinMS;
 	private String _markerName = null;
 
 	private boolean _isLoggingEnabled;
-	private boolean _isHeadersWrittenAlready;
+	private boolean _isLoggingActive;
 	private Queue<LogDataBE> _logEventsBuffer = new ConcurrentLinkedQueue<LogDataBE>();
 	private String _logFolderPath;
 	private PrintWriter _writer;
+	private boolean _isSchedulerRunning;
+	private String _logFilePathName;
+	private int _flushPeriodInSecs;
 
-	ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+	private ScheduledExecutorService _scheduler;
+	private ScheduledFuture<?> _scheduledFuture;
 
 	// Constructor
-	public DataLoggerV2(LogDestination logDestination) {
+	public DataLoggerV2(LogDestination logDestination, int flushPeriodInSecs) {
+
+		_flushPeriodInSecs = flushPeriodInSecs;
+
 		_logFolderPath = LoggingUtilities.CheckLogDestination(logDestination);
 
-		_isLoggingEnabled = !(GeneralUtilities.isStringEmpty(_logFolderPath));
+		_isLoggingEnabled = !(GeneralUtilities.isStringNullOrEmpty(_logFolderPath));
 	}
 
-	// start log queue polling thread
+	// start thread to poll queue and write events to disk
 	@Override
 	public void initLogging(String robotMode) {
 
+		_robotMode = robotMode;
+		_logStartTimeStampinMS = RobotController.getFPGATime() / 1000;
+		_lastLogRecordTimeStampinMS = 0;
+		
+		if(_writer != null)
+		{
+			_writer.close();
+			_writer = null;
+		}
+
 		if (_isLoggingEnabled) {
-			_robotMode = robotMode;
-			_logStartTimeStampinMS = RobotController.getFPGATime() / 1000;
+			_scheduler = Executors.newSingleThreadScheduledExecutor();
 
 			// setup runnable to asyc flush log records to the target location
-			Runnable runnable = new Runnable() {
-				public void run() {
-					flushQueue();
-				}
+			Runnable task = () -> {
+				flushQueue();
 			};
 
 			// run the thread every second
 			//  we need to be carefull that the previous execution is not still running
-			service.scheduleAtFixedRate(runnable, 0, 1, TimeUnit.SECONDS);
+			if(_flushPeriodInSecs > 0)
+			{
+				_scheduledFuture = _scheduler.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
+				_isSchedulerRunning = true;
+			}
+
+			_isLoggingActive = true;
 		}
 	}
 
-	// synchronously add a log record to the queue
+	// synchronous part is only to add a log record to the queue
 	@Override
 	public void LogData(LogDataBE logData) {
+
 		if (_isLoggingEnabled) {
 			// capture the start timestamp if this is the 1st call
 			if (_logStartTimeStampinMS == 0) {
@@ -83,8 +105,11 @@ public class DataLoggerV2 implements IDataLogger {
 			// add starting timestamp to log record
 			logData.set_logStartTimeStampinMS(_logStartTimeStampinMS);
 
-			// add marker to log record (if might be empty)
+			// add marker to log record (it might be blank)
 			logData.set_marker(_markerName);
+
+			// add the current queue depth
+			logData.set_logQueueDepth(_logEventsBuffer.size());
 
 			// add log event to queue
 			synchronized (_logEventsBuffer) {
@@ -107,12 +132,12 @@ public class DataLoggerV2 implements IDataLogger {
 			}
 
 			// optionally write the header row
-			if (!_isHeadersWrittenAlready) {
+			if (_writer == null) {
 				// we defer the creation of the writer to this background thread
-				_writer = LoggingUtilities.CreateLogWriter(_logFolderPath, _robotMode);
+				_logFilePathName = LoggingUtilities.BuildLogFilePathName(_logFolderPath, _robotMode);
+				_writer = LoggingUtilities.CreateLogWriter(_logFilePathName);
 
 				WriteHeaderLine(logData);
-				_isHeadersWrittenAlready = true;
 			}
 
 			// write the data row
@@ -125,10 +150,10 @@ public class DataLoggerV2 implements IDataLogger {
 
 		_writer.print("StartDeltaMS" + "\t"
 			+ "LastScanDeltaMS" + "\t" 
+			+ "LogQueueDepth" + "\t" 
 			+ "Marker" + "\t" 
 			+ "MarkerElapsedMS" + "\t" 
-			+ logData.BuildTSVHeader()
-			+ "\t" + "LogQueueDepth");
+			+ logData.BuildTSVHeader());
 
         _writer.flush();
     }
@@ -141,46 +166,60 @@ public class DataLoggerV2 implements IDataLogger {
 		long lastScanDeltaInMS = 0;
 
 		// calc last scan delta if this is not the 1st record
-		if (_lastScanTimeStampinMS  > 0) {
-			lastScanDeltaInMS = dataToLog.get_logDataTimeStampinMS() - _lastScanTimeStampinMS;
+		if (_lastLogRecordTimeStampinMS  > 0) {
+			lastScanDeltaInMS = dataToLog.get_logDataTimeStampinMS() - _lastLogRecordTimeStampinMS;
 		}
 
 		// write out the current data
-		if(!GeneralUtilities.isStringEmpty(markerName)) {
+		if(!GeneralUtilities.isStringNullOrEmpty(markerName)) {
 
 			// calc elapsed time (in mS) since last marker set
 			double markerElapsedInMSecs = dataToLog.get_logDataTimeStampinMS()  - _markerStartTimeStampinMS;
 
 			_writer.print(startDeltaDiffInMSecs + "\t" 
 							+ lastScanDeltaInMS + "\t" 
+							+ dataToLog.get_logQueueDepth() + "\t" 
 							+ markerName + "\t" 
 							+ markerElapsedInMSecs + "\t" 
-							+ dataToLog.BuildTSVData()
-							+ "\t" + _logEventsBuffer.size());
+							+ dataToLog.BuildTSVData());
 		} else {
 			_writer.print(startDeltaDiffInMSecs + "\t" 
 							+ lastScanDeltaInMS + "\t" 
+							+ dataToLog.get_logQueueDepth() + "\t" 
 							+ "\t" 
 							+ "\t" 
-							+ dataToLog.BuildTSVData()
-							+ "\t" + _logEventsBuffer.size());
+							+ dataToLog.BuildTSVData());
 		}
 
 		_writer.flush();
 
 		// snapshot this log record's timestamp to use in calc in next scan
-		_lastScanTimeStampinMS = dataToLog.get_logDataTimeStampinMS();
+		_lastLogRecordTimeStampinMS = dataToLog.get_logDataTimeStampinMS();
 	}
 
 	// called when telop or auton is disabled to flush any remaining events to disk
 	@Override
 	public void close() {
-		// stop the polling thread
-		service.shutdown();
+		if (_isSchedulerRunning) {
+			// stop the polling thread
+			_scheduler.shutdown();
+			_isSchedulerRunning = false;
+		}
 
-		// flush collected information to disk
-		if(!_logEventsBuffer.isEmpty()) {
-			flushQueue();
+		if (_isLoggingActive){
+			// flush collected information to disk
+			if(!_logEventsBuffer.isEmpty()) {
+				flushQueue();
+
+				// close the open writer
+				_writer.close();
+				_writer = null;
+				_isSchedulerRunning = false;
+
+				System.out.println("-------------------------------------");
+				System.out.println(".. Log File written to: " + _logFilePathName );
+				System.out.println("-------------------------------------");
+			}
 		}
 	}
 
@@ -197,5 +236,11 @@ public class DataLoggerV2 implements IDataLogger {
 	public void clearMarker()
 	{
 		_markerName = null;
+	}
+
+	@Override
+	public boolean get_isLoggingEnabled()
+	{
+		return _isLoggingEnabled;
 	}
 }

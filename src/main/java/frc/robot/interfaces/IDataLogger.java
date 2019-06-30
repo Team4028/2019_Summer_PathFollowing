@@ -20,6 +20,8 @@ public interface IDataLogger {
 
 	public void close();
 
+	public boolean get_isLoggingEnabled();
+	
 	// ====== Support for markers in the log file ======
 	// can by used to flag certain areas in the file
 	public void setMarker(String markerName);

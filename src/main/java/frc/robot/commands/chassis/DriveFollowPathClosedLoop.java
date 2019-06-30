@@ -152,26 +152,53 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         // Start running the path
         _notifier.startPeriodic(_loopPeriodInMS);
 
-        System.out.println(">>>>>>>>> Running Path: " + _pathName + " <<<<<<<<<<");
+        System.out.println("-------------------------------------");
+        System.out.println("... Running Path: " + _pathName);
+        System.out.println("-------------------------------------");
+
+        if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())
+        {
+          Robot._DataLogger.setMarker(_pathName);
+        }
     }
 
     @Override
     protected boolean isFinished() {
-        return _leftFollower.isFinished() || _rightFollower.isFinished();
+        return (_leftFollower.isFinished() || _rightFollower.isFinished());
     }
 
     // Commmand ended normally (typically because isFinished returns true)
     @Override
     protected void end() {
         _notifier.stop();
+        _notifier.close();  // notifier was still firing events until i added this call
         _chassis.stop(false);
+
+        if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())
+        {
+          Robot._DataLogger.clearMarker();
+        }
+
+        System.out.println("-------------------------------------");
+        System.out.println("... Completed Path: " + _pathName);
+        System.out.println("-------------------------------------");
     }
 
     //
     @Override
     protected void interrupted() {
         _notifier.stop();
+        _notifier.close();  // notifier was still firing events until i added this call
         _chassis.stop(false);
+
+        if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())
+        {
+          Robot._DataLogger.clearMarker();
+        }
+
+        System.out.println("-------------------------------------");
+        System.out.println("... Interrupted Path: " + _pathName);
+        System.out.println("-------------------------------------");
     }
 
     // name of this path
@@ -199,7 +226,10 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     private void followPath() {
 
         double currentTimeInMS = RobotController.getFPGATime() / 1000.0;
-        System.out.println(GeneralUtilities.roundDouble(currentTimeInMS - _lastLoopTimeInMS, 1));
+        //System.out.println("CmdNotifier: " 
+        //                    + "L " + _leftFollower.isFinished() 
+         //                   + " R " + _rightFollower.isFinished()
+        //                    + " t " + GeneralUtilities.roundDouble(currentTimeInMS - _lastLoopTimeInMS, 1));
         _lastLoopTimeInMS = currentTimeInMS;
 
         // Get the left and right power output from the distance calculator

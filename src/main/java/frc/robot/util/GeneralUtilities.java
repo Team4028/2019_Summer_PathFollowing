@@ -35,7 +35,7 @@ public class GeneralUtilities {
 			String newDateString = outputFormatter.format(utcFileDate);
 			
 			// write the build date & time to the operator's console log window
-			buildMsg = "== " + robotName + " | " + newDateString + " ==";
+			buildMsg = "===> Code Base: " + robotName + " | JAR DT: " + newDateString + " <===";
 			DriverStation.reportWarning(buildMsg, false);
 		} catch (URISyntaxException e) {
     		DriverStation.reportWarning("Error determining filename of current JAR file", true);
@@ -61,8 +61,8 @@ public class GeneralUtilities {
  		return Math.min(max, Math.max(min, original));
 	 }
 	 
-	public static boolean isStringEmpty(String input){
-        if(input != null && input.length() == 0){
+	public static boolean isStringNullOrEmpty(String input){
+        if(input == null || input.length() == 0){
             return true;
         }
         return false;

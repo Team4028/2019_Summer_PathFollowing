@@ -39,12 +39,13 @@ public class DataLogger implements IDataLogger {
 	private boolean _isHeadersWrittenAlready;
 	private String _logFolderPath;
 	private PrintWriter _writer;
+	private String _logFilePathName;
 
 	// Constructor
 	public DataLogger(LogDestination logDestination) {
 		_logFolderPath = LoggingUtilities.CheckLogDestination(logDestination);
 
-		_isLoggingEnabled = !(GeneralUtilities.isStringEmpty(_logFolderPath));
+		_isLoggingEnabled = !(GeneralUtilities.isStringNullOrEmpty(_logFolderPath));
 	}
 
 	// init loging
@@ -56,7 +57,8 @@ public class DataLogger implements IDataLogger {
 			_logStartTimeStampinMS = RobotController.getFPGATime() / 1000;
 
 			// create the writer here
-			_writer = LoggingUtilities.CreateLogWriter(_logFolderPath, _robotMode);
+			_logFilePathName = LoggingUtilities.BuildLogFilePathName(_logFolderPath, _robotMode);
+			_writer = LoggingUtilities.CreateLogWriter(_logFilePathName);
 		}
 	}
 
@@ -88,8 +90,6 @@ public class DataLogger implements IDataLogger {
 		}
 	}
 
-
-
     // Write out a header (label) row to the file
     private void WriteHeaderLine(LogDataBE logData) {
 
@@ -115,7 +115,7 @@ public class DataLogger implements IDataLogger {
 		}
 
 		// write out the current data
-		if(!GeneralUtilities.isStringEmpty(markerName)) {
+		if(!GeneralUtilities.isStringNullOrEmpty(markerName)) {
 
 			// calc elapsed time (in mS) since last marker set
 			double markerElapsedInMSecs = dataToLog.get_logDataTimeStampinMS()  - _markerStartTimeStampinMS;
@@ -157,5 +157,10 @@ public class DataLogger implements IDataLogger {
 	public void clearMarker()
 	{
 		_markerName = null;
+	}
+
+	@Override
+	public boolean get_isLoggingEnabled() {
+		return _isLoggingEnabled;
 	}
 }

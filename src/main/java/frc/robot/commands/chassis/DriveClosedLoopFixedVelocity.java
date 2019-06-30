@@ -53,7 +53,7 @@ public class DriveClosedLoopFixedVelocity extends Command {
     _chassis.setActivePIDConstantsSlot(_pidSlotIndex);
 
     // set marker in log file records so we can tell when the command started in telop mode
-    if(Robot._DataLogger != null)
+    if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())
     {
       Robot._DataLogger.setMarker(_markerName);
     }
@@ -93,7 +93,7 @@ public class DriveClosedLoopFixedVelocity extends Command {
   {
     _chassis.stop(true);
     
-    if(Robot._DataLogger != null)
+    if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())
     {
       Robot._DataLogger.clearMarker();
     }
@@ -105,7 +105,7 @@ public class DriveClosedLoopFixedVelocity extends Command {
   protected void interrupted() {
     _chassis.stop(true);
 
-    if(Robot._DataLogger != null)
+    if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())
     {
       Robot._DataLogger.clearMarker();
     }

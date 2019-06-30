@@ -23,6 +23,7 @@ import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
 import frc.robot.util.DataLoggerV2;
 import frc.robot.util.GeneralUtilities;
+import frc.robot.ux.OI;
 import frc.robot.ux.PathChooser;
 import frc.robot.entities.LogDataBE;
 
@@ -46,10 +47,12 @@ public class Robot extends TimedRobot {
   public static Chassis _Chassis = Chassis.getInstance();
 
   // ux
+  public static OI _OI = OI.getInstance();
   private static PathChooser _pathChooser = PathChooser.getInstance();
 
   // class level working variables
-  public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.NONE);
+  // flushing at -1 means only bufer and write when disabled
+  public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.USB, -1);
   private String _buildMsg = "?";
   private Command _autonomousCommand = null;
   private boolean _isNotifierRunning = false;
@@ -226,25 +229,22 @@ public class Robot extends TimedRobot {
 	/** Method for Logging Data to the USB Stick plugged into the RoboRio */
   public void logAllData() { 
 
-      if(_DataLogger != null) {  
+      // create a new, empty logging class
+      _logData = new LogDataBE(RobotController.getFPGATime() / 1000);
+      
+      // ----------------------------------------------
+      // ask each subsystem that exists to add its data
+      // ----------------------------------------------
+      if(_Chassis != null)              { _Chassis.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+      if(_NavX != null)                 { _NavX.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
 
-        // create a new, empty logging class
-        _logData = new LogDataBE(RobotController.getFPGATime() / 1000);
-        
-        // ----------------------------------------------
-        // ask each subsystem that exists to add its data
-        // ----------------------------------------------
-        if(_Chassis != null)              { _Chassis.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
-        if(_NavX != null)                 { _NavX.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+      // if the auton command is set 
+      if((_autonomousCommand != null) 
+            && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
+                                        { ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
 
-        // if the auton command is set 
-        if((_autonomousCommand != null) 
-              && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
-                                          { ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+      if(_pathChooser != null)          { _pathChooser.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }    
 
-        if(_pathChooser != null)          { _pathChooser.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }    
-
-	    	_DataLogger.LogData(_logData);
-    	}
+      _DataLogger.LogData(_logData);
   }
 }

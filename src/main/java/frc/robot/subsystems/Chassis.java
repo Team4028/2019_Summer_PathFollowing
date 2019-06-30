@@ -447,12 +447,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
       
       _sb.setLength(0);
+      _sb.append("ff: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kF, 3))); 
-      _sb.append(" | ");
+      _sb.append(" |p ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kP, 3))); 
-      _sb.append(" | ");
+      _sb.append(" |i");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kI, 3))); 
-      _sb.append(" | ");
+      _sb.append(" |d ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:LeftPIDGains", _sb.toString());
     } else {
@@ -497,12 +498,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
 
       _sb.setLength(0);
+      _sb.append("ff: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kF, 3))); 
-      _sb.append(" | ");
+      _sb.append(" |p: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kP, 3))); 
-      _sb.append(" | ");
+      _sb.append(" |i: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kI, 3))); 
-      _sb.append(" | ");
+      _sb.append(" |d: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:RgtPIDGains", _sb.toString());
     } else {

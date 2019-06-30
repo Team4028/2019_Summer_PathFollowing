@@ -62,18 +62,18 @@ public class LoggingUtilities {
 				break;
 		}
 
-		if (!GeneralUtilities.isStringEmpty(logFolderPath))
+		if (!GeneralUtilities.isStringNullOrEmpty(logFolderPath))
 		{
 			System.out.println("-------------------------------------");
-			System.out.println("..Log file will be created in folder: " + logFolderPath);
+			System.out.println("..Logging Enabled, Log files will be created in folder: " + logFolderPath);
 			System.out.println("-------------------------------------");			
 		}
 
 		return logFolderPath;
 	}
 
-	public static PrintWriter CreateLogWriter(String logFolderPath, String logFileSuffix) {
-
+	public static String BuildLogFilePathName(String logFolderPath, String logFileSuffix)
+	{
 		SimpleDateFormat outputFormatter = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS");
 		outputFormatter.setTimeZone(TimeZone.getTimeZone("US/Eastern")); 
 		String newDateString = outputFormatter.format(new Date());
@@ -83,14 +83,19 @@ public class LoggingUtilities {
 		
     	// build the full file path name
 		String logFilePathName = logFolderPath + File.separator + fileName;
-		
+
+		return logFilePathName;
+	}
+
+	public static PrintWriter CreateLogWriter(String logFilePathName) {
+	
 		PrintWriter writer = null;
 		try {
 			writer = new PrintWriter(new BufferedWriter(new FileWriter(logFilePathName, true)));
 
-			System.out.println("-------------------------------------");
-			System.out.println("..Logging enabled to: " + logFilePathName);
-			System.out.println("-------------------------------------");
+			//System.out.println("-------------------------------------");
+			//System.out.println("..Logging enabled to: " + logFilePathName);
+			//System.out.println("-------------------------------------");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
