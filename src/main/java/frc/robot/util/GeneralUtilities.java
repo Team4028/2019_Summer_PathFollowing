@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.TimeZone;
 
 import frc.robot.Robot;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 
 public class GeneralUtilities {
@@ -66,5 +67,21 @@ public class GeneralUtilities {
             return true;
         }
         return false;
-    }
+	}
+	
+	public static Boolean WarmUp()
+	{
+		String warmUP = "";
+		Double fooBar = 1.1;
+
+		for(int loopCtr = 0; loopCtr<5000; loopCtr++)
+		{
+			warmUP = Double.toString(fooBar);
+			fooBar = fooBar + 1.1;
+		}
+
+		NetworkTableInstance.getDefault();
+
+		return true;
+	}
 }

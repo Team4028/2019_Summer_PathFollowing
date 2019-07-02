@@ -7,6 +7,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.command.Command;
@@ -53,8 +54,7 @@ public class Robot extends TimedRobot {
 
   // class level working variables
   // flushing at -1 means only bufer and write when disabled
-  public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.NONE, -1);
-  private String _buildMsg = "?";
+  public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.USB, -1);
   private Command _autonomousCommand = null;
   private boolean _isNotifierRunning = false;
   private LogDataBE _logData;
@@ -67,15 +67,13 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    // https://www.chiefdelphi.com/t/improbable-java-slow-down-in-combining-doubles-and-strings/350331/17
+    System.out.println("WarmUP Complete?: " + GeneralUtilities.WarmUp());
+
     // write the overall robot dashboard info
-    _buildMsg = GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME);
-    SmartDashboard.putString("Robot Build", _buildMsg);
+    SmartDashboard.putString("Robot Build", GeneralUtilities.WriteBuildInfoToDashboard(ROBOT_NAME));
 
     _NavX.zeroYaw();
-
-    // https://www.chiefdelphi.com/t/improbable-java-slow-down-in-combining-doubles-and-strings/350331/17
-    String forceDoubleToLoad = Double.toString(1234.56);
-
   }
 
   /********************************************************************************************
@@ -102,8 +100,10 @@ public class Robot extends TimedRobot {
     // init data logging
     _DataLogger.initLogging("Auton"); 
     _isNotifierRunning = true;
+
     // setup auton command
     _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2", this::logAllData);
+    //_autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2", this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
@@ -130,12 +130,13 @@ public class Robot extends TimedRobot {
     _Chassis.zeroSensors();
     _NavX.zeroYaw();
 
+    // init data logging
+    _DataLogger.initLogging("Telop");
+    _isNotifierRunning = false;
+
     // start honoring joysticks
     Command driveWJoyStick = new DriveWithControllers();
     driveWJoyStick.start();
-
-    // init data logging
-    _DataLogger.initLogging("Telop"); // init data logging	
   }
 
    /* This function is called periodically during teleop mode.
@@ -209,7 +210,9 @@ public class Robot extends TimedRobot {
     this.outputAllToDashboard();
 
     // if a notifier is running, we will call the logAllData method from inside the command so that we sync to the notifier period
-    if(!this.isDisabled() && (_DataLogger != null) && !_isNotifierRunning ) {
+    if(!this.isDisabled() 
+          && (_DataLogger != null) 
+          && !_isNotifierRunning ) {
       this.logAllData();
     }
   }
@@ -234,20 +237,30 @@ public class Robot extends TimedRobot {
   public void logAllData() { 
 
       // create a new, empty logging class
-      _logData = new LogDataBE(RobotController.getFPGATime() / 1000);
+      if(_logData == null) {
+        _logData = new LogDataBE();
+      }
+      else {
+        _logData.init(RobotController.getFPGATime() / 1000);
+      }
       
       // ----------------------------------------------
       // ask each subsystem that exists to add its data
       // ----------------------------------------------
       if(_Chassis != null)              { _Chassis.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+      _logData.AddData("logAllData:AfterChassis", Long.toString(RobotController.getFPGATime() / 1000));
+
       if(_NavX != null)                 { _NavX.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+      _logData.AddData("logAllData:AfterNavX", Long.toString(RobotController.getFPGATime() / 1000));
 
       // if the auton command is set 
       if((_autonomousCommand != null) 
             && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
                                         { ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
+      _logData.AddData("logAllData:AfterAuton", Long.toString(RobotController.getFPGATime() / 1000));
 
       if(_pathChooser != null)          { _pathChooser.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }    
+      _logData.AddData("logAllData:AtEnd", Long.toString(RobotController.getFPGATime() / 1000));
 
       _DataLogger.LogData(_logData);
   }

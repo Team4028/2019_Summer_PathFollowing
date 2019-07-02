@@ -21,7 +21,8 @@ import frc.robot.interfaces.IDataLogger;
 import frc.robot.interfaces.LogDestination;
 
 /**
- * This version tries to make logging totally async to the control loops
+ * This version tries to make writing logging totally async to the control loops
+ * 	(the event data is still gathered on the control loop, just the writing is async)
  * 
  * - build queue of events 
  * - create a separate thread that runs at a lower frequency to write to storage

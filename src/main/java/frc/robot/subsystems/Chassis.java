@@ -171,8 +171,11 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
 
     driveMotor.configClosedloopRamp(0.0, CAN_TIMEOUT_MSECS_INIT);
 
-    // update PID 0 feedback values more often (default = 100mS) so error value is more accurate
-    driveMotor.setStatusFramePeriod(StatusFrame.Status_13_Base_PIDF0, 10, CAN_TIMEOUT_MSECS_INIT);
+    // check can bus utilization to make sure we are not saturating!
+    // Status 2 (Default Period 20ms): Selected Sensor Position & Velocity (PID 0)
+    driveMotor.setStatusFramePeriod(StatusFrame.Status_2_Feedback0, 5, CAN_TIMEOUT_MSECS_INIT);
+    // Status 13 (Default Period >100ms): PID0 (Primary PID) Information
+    driveMotor.setStatusFramePeriod(StatusFrame.Status_13_Base_PIDF0, 5, CAN_TIMEOUT_MSECS_INIT);
     return driveMotor;
   }
 
@@ -465,7 +468,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       // heading at every scan cycle, so using Euler's Method (Calculus stuff), we can add successive vectors to
       // closely map the actual trajectory (nearly 100% resolution)
 
-      double leftDPSegment = getLeftChassisPositionInInches() - _lastLPosition; //Calculate dP (Current position - last position)
+      double leftChassisPositionInInches = getLeftChassisPositionInInches();
+      double leftDPSegment = leftChassisPositionInInches - _lastLPosition; //Calculate dP (Current position - last position)
       double leftDXSegment = leftDPSegment * Math.cos(_navX.getPathfinderYaw()); // dX = dP * cos(heading) (Think traingles)
       double leftDYSegment = -leftDPSegment * Math.sin(_navX.getPathfinderYaw()); //dY = -dP * sin(heading) (Inverts Y to make left turns go negative on a graph)
 
@@ -475,12 +479,13 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("LeftFollower:X", Double.toString(_leftXCoord));
       logData.AddData("LeftFollower:Y", Double.toString(_leftYCoord));
 
-      _lastLPosition = getLeftChassisPositionInInches();
+      _lastLPosition = leftChassisPositionInInches;
       _leftLastXCoord = _leftXCoord;
       _leftLastYCoord = _leftYCoord;
       
-      logData.AddData("Chassis:LeftActPosInInches", Double.toString(getLeftChassisPositionInInches()));
+      logData.AddData("Chassis:LeftActPosInInches", Double.toString(leftChassisPositionInInches));
       logData.AddData("Chassis:LeftActVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
+      logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
     }
     
     // ======= Right Log Values ======================================================================
@@ -510,7 +515,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:RgtPIDGains", _sb.toString());
     } else {
-      double rgtDPSegment = getLeftChassisPositionInInches() - _lastRPosition;
+      double rgtChassisPositionInInches = getRightChassisPositionInInches();
+      double rgtDPSegment = rgtChassisPositionInInches - _lastRPosition;
       double rgtDXSegment = rgtDPSegment * Math.cos(_navX.getPathfinderYaw());
       double rgtDYSegment = -rgtDPSegment * Math.sin(_navX.getPathfinderYaw());
 
@@ -520,13 +526,14 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("RgtFollower:X", Double.toString(_rightXCoord));
       logData.AddData("RgtFollower:Y", Double.toString(_rightYCoord));
 
-      _lastRPosition = getRightChassisPositionInInches();
+      _lastRPosition = rgtChassisPositionInInches;
       _rightLastXCoord = _rightXCoord;
       _rightLastYCoord = _rightYCoord;
 
       
-      logData.AddData("Chassis:RgtActPosInInches", Double.toString(getRightChassisPositionInInches()));
+      logData.AddData("Chassis:RgtActPosInInches", Double.toString(rgtChassisPositionInInches));
       logData.AddData("Chassis:RgtActVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
+      logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
     }
   }
 

@@ -17,12 +17,25 @@ public class LogDataBE {
 	private String _markerName = null;
 	private long _logQueueDepth;
 
+	private static final int ARRAYLIST_INITIAL_SIZE = 50;
+
 	// constructor(s)
-	public LogDataBE(long logDataTimeStampinMS) {
-		_names = new ArrayList<String>();
-		_values = new ArrayList<String>();
+	public LogDataBE() {
+		// help perf by presizing array
+		_names = new ArrayList<String>(ARRAYLIST_INITIAL_SIZE);
+		_values = new ArrayList<String>(ARRAYLIST_INITIAL_SIZE);
+	}
+
+	public void init(long logDataTimeStampinMS)
+	{
+		// help perf by not creating a new LogDataBE each time
+		_names.clear();
+		_values.clear();
 
 		_logDataTimeStampinMS = logDataTimeStampinMS;
+		_logStartTimeStampinMS = 0;
+		_markerName = null;
+		_logQueueDepth = 0;
 	}
 
 	public boolean get_isEmpty()
@@ -81,7 +94,7 @@ public class LogDataBE {
 	/** Build a TSV string from a List<string> */
 	private String BuildTSVString(List<String> myList) {
 		// create stringbuilder with a larger initial capacity to improve perf
-		StringBuilder sb = new StringBuilder(550);
+		StringBuilder sb = new StringBuilder(600);
 		
 		for(String item : myList) {
 			// add the item + a tab character
