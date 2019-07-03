@@ -469,6 +469,10 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       // closely map the actual trajectory (nearly 100% resolution)
 
       double leftChassisPositionInInches = getLeftChassisPositionInInches();
+      logData.AddData("Chassis:LeftActPosInInches", Double.toString(GeneralUtilities.roundDouble(leftChassisPositionInInches, 1)));
+      logData.AddData("Chassis:LeftActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getLeftChassisVelocityInInchesPerSec(), 2)));
+      logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_leftMaster.getMotorOutputPercent(), 2)));
+
       double leftDPSegment = leftChassisPositionInInches - _lastLPosition; //Calculate dP (Current position - last position)
       double leftDXSegment = leftDPSegment * Math.cos(_navX.getPathfinderYaw()); // dX = dP * cos(heading) (Think traingles)
       double leftDYSegment = -leftDPSegment * Math.sin(_navX.getPathfinderYaw()); //dY = -dP * sin(heading) (Inverts Y to make left turns go negative on a graph)
@@ -476,16 +480,12 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       _leftXCoord = _leftLastXCoord + leftDXSegment; // X (Current Position) = dX (Change in X) + X last (Previous Position)
       _leftYCoord = _leftLastYCoord + leftDYSegment; // Y (Current Position) = dY (Change in Y) + Y last (Previous Position)
 
-      logData.AddData("LeftFollower:X", Double.toString(_leftXCoord));
-      logData.AddData("LeftFollower:Y", Double.toString(_leftYCoord));
+      logData.AddData("Chassis:LeftX", Double.toString(GeneralUtilities.roundDouble(_leftXCoord, 1)));
+      logData.AddData("Chassis:LeftY", Double.toString(GeneralUtilities.roundDouble(_leftYCoord, 1)));
 
       _lastLPosition = leftChassisPositionInInches;
       _leftLastXCoord = _leftXCoord;
       _leftLastYCoord = _leftYCoord;
-      
-      logData.AddData("Chassis:LeftActPosInInches", Double.toString(leftChassisPositionInInches));
-      logData.AddData("Chassis:LeftActVelInIPS", Double.toString(getLeftChassisVelocityInInchesPerSec()));
-      logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(_leftMaster.getMotorOutputPercent()));
     }
     
     // ======= Right Log Values ======================================================================
@@ -515,7 +515,12 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:RgtPIDGains", _sb.toString());
     } else {
+
       double rgtChassisPositionInInches = getRightChassisPositionInInches();
+      logData.AddData("Chassis:RgtActPosInInches", Double.toString(GeneralUtilities.roundDouble(rgtChassisPositionInInches, 1)));
+      logData.AddData("Chassis:RgtActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getRightChassisVelocityInInchesPerSec(), 2)));
+      logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_rightMaster.getMotorOutputPercent(), 2)));
+
       double rgtDPSegment = rgtChassisPositionInInches - _lastRPosition;
       double rgtDXSegment = rgtDPSegment * Math.cos(_navX.getPathfinderYaw());
       double rgtDYSegment = -rgtDPSegment * Math.sin(_navX.getPathfinderYaw());
@@ -523,17 +528,12 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       _rightXCoord = _rightLastXCoord + rgtDXSegment;
       _rightYCoord = _rightLastYCoord + rgtDYSegment;
 
-      logData.AddData("RgtFollower:X", Double.toString(_rightXCoord));
-      logData.AddData("RgtFollower:Y", Double.toString(_rightYCoord));
+      logData.AddData("Chassis:RgtX", Double.toString(GeneralUtilities.roundDouble(_rightXCoord, 1)));
+      logData.AddData("Chassis:RgtY", Double.toString(GeneralUtilities.roundDouble(_rightYCoord, 1)));
 
       _lastRPosition = rgtChassisPositionInInches;
       _rightLastXCoord = _rightXCoord;
       _rightLastYCoord = _rightYCoord;
-
-      
-      logData.AddData("Chassis:RgtActPosInInches", Double.toString(rgtChassisPositionInInches));
-      logData.AddData("Chassis:RgtActVelInIPS", Double.toString(getRightChassisVelocityInInchesPerSec()));
-      logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(_rightMaster.getMotorOutputPercent()));
     }
   }
 

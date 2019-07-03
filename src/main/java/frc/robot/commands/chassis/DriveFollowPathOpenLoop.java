@@ -10,13 +10,19 @@ package frc.robot.commands.chassis;
 import static jaci.pathfinder.Pathfinder.r2d;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
+import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Robot;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
+import frc.robot.interfaces.PathFileType;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.entities.EncoderFollowerPIDGainsBE;
@@ -59,11 +65,13 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     private double _rightStartingDistance = 0;
 
     private String _pathName = "";
+    private PathFileType _pathFileType;
     private Runnable _loggingMethodDelegate;
     private double _loopPeriodInMS = 0;
     private double _lastLoopTimeInMS = 0;
 
-    private StringBuilder _sb = new StringBuilder();
+    // init stringbuilder size to improve perf
+    private StringBuilder _sb = new StringBuilder(250);
 
     /*
      * Equation: output = (kP * error) + (kD * diff(error)/dt) + (kV * vel) + (kA * accel)
@@ -98,7 +106,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
     // open loop [-1 - 1], so this compensates for closed loop)
-    private static final double KH = 0.0; 
+    private static final double KH = 1.0; 
 
     //  robot drives have a voltage "dead-zone" around zero within which the torque generated 
     //  by the motors is insufficient to overcome frictional losses in the drive. 
@@ -106,13 +114,14 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     // ======================================================================================
     // constructor
     // ======================================================================================
-    public DriveFollowPathOpenLoop(String pathName, Runnable loggingMethodDelegate) {
+    public DriveFollowPathOpenLoop(String pathName, PathFileType pathFileType, Runnable loggingMethodDelegate) {
         // Use requires() here to declare subsystem dependencies
         requires(_chassis);
         setInterruptible(true);
 
         _pathName = pathName;
-        importPath(pathName);
+        _pathFileType = pathFileType;
+        importPath(pathName, pathFileType);
 
         _leftFollower.configurePIDVA(_leftFollowerGains.KP, 
                                         _leftFollowerGains.KI, 
@@ -204,13 +213,32 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     // name of this path
     // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
     // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
-    // https://www.chiefdelphi.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
-    private void importPath(String pathName) {
+    // https://www.chiefdelph:i.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
+    private void importPath(String pathName, PathFileType pathFileType) {
         try {
+            String leftFileName = "";
+            String rgtFileName = "";
+
+            // deploy folder is /home/lvuser/deploy/paths/output
+
+            switch(pathFileType)
+            {
+                // JACI's tool
+                case PATHWEAVER:
+                    // Note: Bug in this version of PathFollower, generated paths are in wrong filename
+                    leftFileName = "output/" + pathName + ".right";
+                    rgtFileName = "output/" + pathName + ".left";
+                    break;
+
+                case PATHPLANNER:
+                    GeneralUtilities.copyPathFiles(pathName);
+                    break;
+            }
+
             // Read the path files from the file system
-            // Note: Bug in this version of PathFollower, generated paths are in wrong filename
-            Trajectory leftTrajectory = PathfinderFRC.getTrajectory("output/" + pathName + ".right");
-            Trajectory rightTrajectory = PathfinderFRC.getTrajectory("output/" + pathName + ".left");
+
+            Trajectory leftTrajectory = PathfinderFRC.getTrajectory(leftFileName);
+            Trajectory rightTrajectory = PathfinderFRC.getTrajectory(rgtFileName);
 
             // Set the two paths in the followers
             _leftFollower = new DistanceFollower(leftTrajectory);
@@ -269,7 +297,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
         _chassis.setOpenLoopVelocityCmd(left_speed - turn, right_speed + turn);
     
         // if a logging method delegate was passed in, call it 
-        if (_loggingMethodDelegate != null) {
+        if (_loggingMethodDelegate != null && !isFinished()) {
             _loggingMethodDelegate.run();
         }
     }
@@ -278,7 +306,6 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     public void updateLogData(LogDataBE logData, boolean isVerboseLoggngEnabled) {
         // use stringbuilder instead of concat for perf
         if (!_leftFollower.isFinished()) {
-
             _sb.setLength(0);
             _sb.append("p: ");
             _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KP, 3)));
@@ -298,10 +325,10 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     
             // log segment target data
             Segment currentLeftSegment = _leftFollower.getSegment();
-            logData.AddData("LeftFollower:SegmentPos", Double.toString(currentLeftSegment.position));
-            logData.AddData("LeftFollower:SegmentVel", Double.toString(currentLeftSegment.velocity));
-            logData.AddData("LeftFollower:SegmentAccel", Double.toString(currentLeftSegment.acceleration));
-            logData.AddData("LeftFollower:Heading", Double.toString(currentLeftSegment.heading));
+            logData.AddData("LeftFollower:SegmentPos", Double.toString(GeneralUtilities.roundDouble(currentLeftSegment.position, 1)));
+            logData.AddData("LeftFollower:SegmentVel", Double.toString(GeneralUtilities.roundDouble(currentLeftSegment.velocity, 2)));
+            logData.AddData("LeftFollower:SegmentAccel", Double.toString(GeneralUtilities.roundDouble(currentLeftSegment.acceleration, 2)));
+            logData.AddData("LeftFollower:Heading", Double.toString(GeneralUtilities.roundDouble(currentLeftSegment.heading, 3)));
             
             // log calculated target position relative to start
             double leftDPSegment = currentLeftSegment.position - _leftLastPosition;
@@ -341,10 +368,10 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
           
             // log segment target data
             Segment currentRightSegment = _rightFollower.getSegment();
-            logData.AddData("RgtFollower:SegmentPos", Double.toString(currentRightSegment.position));
-            logData.AddData("RgtFollower:SegmentVel", Double.toString(currentRightSegment.velocity));
-            logData.AddData("RgtFollower:SegmentAccel", Double.toString(currentRightSegment.acceleration));
-            logData.AddData("RGTFollower:Heading", Double.toString(currentRightSegment.heading));
+            logData.AddData("RgtFollower:SegmentPos", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.position, 1)));
+            logData.AddData("RgtFollower:SegmentVel", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.velocity, 2)));
+            logData.AddData("RgtFollower:SegmentAccel", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.acceleration, 2)));
+            logData.AddData("RGTFollower:Heading", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.heading, 3)));
 
             // log calculated target position relative to start
             double rightDPSegment = currentRightSegment.position - _rightLastPosition;
@@ -354,8 +381,8 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
             _rightXCoord = _rightLastXCoord + rightDXSegment;
             _rightYCoord = _rightLastYCoord + rightDYSegment;
 
-            logData.AddData("RgtFollower:X", Double.toString(_rightXCoord));
-            logData.AddData("RgtFollower:Y", Double.toString(_rightYCoord));
+            logData.AddData("RgtFollower:X", Double.toString(GeneralUtilities.roundDouble(_rightXCoord, 1)));
+            logData.AddData("RgtFollower:Y", Double.toString(GeneralUtilities.roundDouble(_rightYCoord, 1)));
 
             // snapshot values for next loop cycle
             _rightLastPosition = currentRightSegment.position;

@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -15,6 +16,7 @@ import java.util.TimeZone;
 import frc.robot.Robot;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Filesystem;
 
 public class GeneralUtilities {
 
@@ -73,15 +75,63 @@ public class GeneralUtilities {
 	{
 		String warmUP = "";
 		Double fooBar = 1.1;
+		Double fooBarSin = 0.0;
+		Double fooBarCos = 0.0;
 
 		for(int loopCtr = 0; loopCtr<5000; loopCtr++)
 		{
 			warmUP = Double.toString(fooBar);
 			fooBar = fooBar + 1.1;
+			fooBarSin = Math.cos(fooBar);
+			fooBarCos = Math.sin(fooBar);
 		}
 
 		NetworkTableInstance.getDefault();
 
 		return true;
+	}
+
+	//  LeftTurn_v3 => LeftTurn_v3_left.csv  ==> LeftTurn_v3.left.pf1.csv
+	public static void copyPathFiles(String pathName)
+	{
+		String filePathName;
+		Path source;
+		Path target;
+
+		// *** LEFT ***
+		// get the source file path
+		filePathName = Filesystem.getDeployDirectory() 
+								+ "/" + "paths/" + "output/" + pathName + "_left.csv";
+		source = Paths.get(filePathName);
+
+		// get the target file path
+		filePathName = Filesystem.getDeployDirectory() 
+								+ "/" + "paths/" + "output/" + pathName + ".left.pf1.csv";
+		target = Paths.get(filePathName);
+
+		try {
+			Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		// *** RIGHT ***
+		// get the source file path
+		filePathName = Filesystem.getDeployDirectory() 
+								+ "/" + "paths/" + "output/" + pathName + "_right.csv";
+		source = Paths.get(filePathName);
+
+		// get the target file path
+		filePathName = Filesystem.getDeployDirectory() 
+								+ "/" + "paths/" + "output/" + pathName + ".right.pf1.csv";
+		target = Paths.get(filePathName);
+
+		try {
+			Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

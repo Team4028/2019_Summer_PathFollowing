@@ -20,6 +20,7 @@ import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.interfaces.IDataLogger;
 import frc.robot.interfaces.LogDestination;
+import frc.robot.interfaces.PathFileType;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
@@ -56,10 +57,11 @@ public class Robot extends TimedRobot {
   // flushing at -1 means only bufer and write when disabled
   public static IDataLogger _DataLogger = new DataLoggerV2(LogDestination.USB, -1);
   private Command _autonomousCommand = null;
+  //private DriveFollowPathOpenLoop _autonomousCommand = null;
   private boolean _isNotifierRunning = false;
   private LogDataBE _logData;
 
-  private static final boolean IS_VERBOSE_LOGGING_ENABLED = true;
+  private static final boolean IS_VERBOSE_LOGGING_ENABLED = false;
 
   /**
    * This function is run when the robot is first started up and should be used
@@ -102,8 +104,8 @@ public class Robot extends TimedRobot {
     _isNotifierRunning = true;
 
     // setup auton command
-    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2", this::logAllData);
-    //_autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2", this::logAllData);
+    //_autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2",PathFileType.PATHWEAVER ,this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v3",PathFileType.PATHWEAVER ,this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
@@ -237,13 +239,8 @@ public class Robot extends TimedRobot {
   public void logAllData() { 
 
       // create a new, empty logging class
-      if(_logData == null) {
-        _logData = new LogDataBE();
-      }
-      else {
-        _logData.init(RobotController.getFPGATime() / 1000);
-      }
-      
+      _logData = new LogDataBE(RobotController.getFPGATime() / 1000);
+ 
       // ----------------------------------------------
       // ask each subsystem that exists to add its data
       // ----------------------------------------------
@@ -254,12 +251,12 @@ public class Robot extends TimedRobot {
       _logData.AddData("logAllData:AfterNavX", Long.toString(RobotController.getFPGATime() / 1000));
 
       // if the auton command is set 
-      if((_autonomousCommand != null) 
-            && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
+      if((_autonomousCommand != null)
+           && (_autonomousCommand instanceof IBeakSquadDataPublisher))  
                                         { ((IBeakSquadDataPublisher) _autonomousCommand).updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }
       _logData.AddData("logAllData:AfterAuton", Long.toString(RobotController.getFPGATime() / 1000));
 
-      if(_pathChooser != null)          { _pathChooser.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }    
+      //if(_pathChooser != null)          { _pathChooser.updateLogData(_logData, IS_VERBOSE_LOGGING_ENABLED); }    
       _logData.AddData("logAllData:AtEnd", Long.toString(RobotController.getFPGATime() / 1000));
 
       _DataLogger.LogData(_logData);

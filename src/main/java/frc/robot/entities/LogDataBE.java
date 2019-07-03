@@ -20,12 +20,15 @@ public class LogDataBE {
 	private static final int ARRAYLIST_INITIAL_SIZE = 50;
 
 	// constructor(s)
-	public LogDataBE() {
+	public LogDataBE(long logDataTimeStampinMS) {
 		// help perf by presizing array
 		_names = new ArrayList<String>(ARRAYLIST_INITIAL_SIZE);
 		_values = new ArrayList<String>(ARRAYLIST_INITIAL_SIZE);
+
+		_logDataTimeStampinMS = logDataTimeStampinMS;
 	}
 
+	/*
 	public void init(long logDataTimeStampinMS)
 	{
 		// help perf by not creating a new LogDataBE each time
@@ -37,6 +40,7 @@ public class LogDataBE {
 		_markerName = null;
 		_logQueueDepth = 0;
 	}
+	*/
 
 	public boolean get_isEmpty()
 	{
@@ -81,14 +85,14 @@ public class LogDataBE {
 	
 	/** Build a TSV (tab separated value) string for the header row */
 	public String BuildTSVHeader() {
-		List<String> names = new ArrayList<String>(_names);
-		return BuildTSVString(names);
+		//List<String> names = new ArrayList<String>(_names);
+		return BuildTSVString(_names);
 	}
 
 	/** Build a TSV (tab separated value) string for a data row */
 	public String BuildTSVData() {
-		List<String> values = new ArrayList<String>(_values);
-		return BuildTSVString(values);
+		//List<String> values = new ArrayList<String>(_values);
+		return BuildTSVString(_values);
 	}
 	
 	/** Build a TSV string from a List<string> */
