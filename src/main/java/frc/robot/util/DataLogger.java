@@ -30,9 +30,9 @@ public class DataLogger implements IDataLogger {
 
 	// working variables
 	private String _robotMode = "";
-	private long _logStartTimeStampinMS;
-	private long _lastScanTimeStampinMS;
-	private long _markerStartTimeStampinMS;
+	private double _logStartTimeStampinMS;
+	private double _lastScanTimeStampinMS;
+	private double _markerStartTimeStampinMS;
 	private String _markerName = null;
 
 	private boolean _isLoggingEnabled;
@@ -54,7 +54,7 @@ public class DataLogger implements IDataLogger {
 
 		if (_isLoggingEnabled) {
 			_robotMode = robotMode;
-			_logStartTimeStampinMS = RobotController.getFPGATime() / 1000;
+			_logStartTimeStampinMS = GeneralUtilities.getRoundedFPGATime();
 
 			// create the writer here
 			_logFilePathName = LoggingUtilities.BuildLogFilePathName(_logFolderPath, _robotMode);
@@ -107,7 +107,7 @@ public class DataLogger implements IDataLogger {
 
 		double startDeltaDiffInMSecs = dataToLog.get_logDataTimeStampinMS() - _logStartTimeStampinMS;
 		String markerName = dataToLog.get_marker();
-		long lastScanDeltaInMS = 0;
+		double lastScanDeltaInMS = 0;
 
 		// calc last scan delta if this is not the 1st record
 		if (_lastScanTimeStampinMS  > 0) {

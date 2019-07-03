@@ -105,7 +105,7 @@ public class Robot extends TimedRobot {
 
     // setup auton command
     //_autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2",PathFileType.PATHWEAVER ,this::logAllData);
-    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v3",PathFileType.PATHWEAVER ,this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2",PathFileType.PATHWEAVER ,this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
@@ -239,7 +239,7 @@ public class Robot extends TimedRobot {
   public void logAllData() { 
 
       // create a new, empty logging class
-      _logData = new LogDataBE(RobotController.getFPGATime() / 1000);
+      _logData = new LogDataBE(GeneralUtilities.getRoundedFPGATime());
  
       // ----------------------------------------------
       // ask each subsystem that exists to add its data

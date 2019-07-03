@@ -17,6 +17,7 @@ import frc.robot.Robot;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.RobotController;
 
 public class GeneralUtilities {
 
@@ -133,5 +134,12 @@ public class GeneralUtilities {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	public static double getRoundedFPGATime()
+	{
+		double fpgaTime = ((double)RobotController.getFPGATime()) / 1000.0;
+
+		return roundDouble(fpgaTime, 1);
 	}
 }

@@ -474,8 +474,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_leftMaster.getMotorOutputPercent(), 2)));
 
       double leftDPSegment = leftChassisPositionInInches - _lastLPosition; //Calculate dP (Current position - last position)
-      double leftDXSegment = leftDPSegment * Math.cos(_navX.getPathfinderYaw()); // dX = dP * cos(heading) (Think traingles)
-      double leftDYSegment = -leftDPSegment * Math.sin(_navX.getPathfinderYaw()); //dY = -dP * sin(heading) (Inverts Y to make left turns go negative on a graph)
+      double leftDXSegment = leftDPSegment * Math.cos(_navX.getPathfinderYawInRadians()); // dX = dP * cos(heading) (Think traingles)
+      double leftDYSegment = -leftDPSegment * Math.sin(_navX.getPathfinderYawInRadians()); //dY = -dP * sin(heading) (Inverts Y to make left turns go negative on a graph)
 
       _leftXCoord = _leftLastXCoord + leftDXSegment; // X (Current Position) = dX (Change in X) + X last (Previous Position)
       _leftYCoord = _leftLastYCoord + leftDYSegment; // Y (Current Position) = dY (Change in Y) + Y last (Previous Position)
@@ -522,8 +522,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_rightMaster.getMotorOutputPercent(), 2)));
 
       double rgtDPSegment = rgtChassisPositionInInches - _lastRPosition;
-      double rgtDXSegment = rgtDPSegment * Math.cos(_navX.getPathfinderYaw());
-      double rgtDYSegment = -rgtDPSegment * Math.sin(_navX.getPathfinderYaw());
+      double rgtDXSegment = rgtDPSegment * Math.cos(_navX.getPathfinderYawInRadians());
+      double rgtDYSegment = -rgtDPSegment * Math.sin(_navX.getPathfinderYawInRadians());
 
       _rightXCoord = _rightLastXCoord + rgtDXSegment;
       _rightYCoord = _rightLastYCoord + rgtDYSegment;

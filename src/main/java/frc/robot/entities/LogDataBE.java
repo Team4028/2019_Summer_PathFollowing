@@ -12,15 +12,15 @@ public class LogDataBE {
 	// define class level working variables
 	private List<String> _names;
 	private List<String> _values;
-	private long _logStartTimeStampinMS;
-	private long _logDataTimeStampinMS;
+	private double _logStartTimeStampinMS;
+	private double _logDataTimeStampinMS;
 	private String _markerName = null;
 	private long _logQueueDepth;
 
 	private static final int ARRAYLIST_INITIAL_SIZE = 50;
 
 	// constructor(s)
-	public LogDataBE(long logDataTimeStampinMS) {
+	public LogDataBE(double logDataTimeStampinMS) {
 		// help perf by presizing array
 		_names = new ArrayList<String>(ARRAYLIST_INITIAL_SIZE);
 		_values = new ArrayList<String>(ARRAYLIST_INITIAL_SIZE);
@@ -47,12 +47,12 @@ public class LogDataBE {
 		return _names.isEmpty() || _values.isEmpty();
 	}
 
-	public long get_logDataTimeStampinMS()
+	public double get_logDataTimeStampinMS()
 	{
 		return _logDataTimeStampinMS;
 	}
 
-	public void set_logStartTimeStampinMS(long logStartTimeStampinMS)
+	public void set_logStartTimeStampinMS(double logStartTimeStampinMS)
 	{
 		_logStartTimeStampinMS = logStartTimeStampinMS;
 	}

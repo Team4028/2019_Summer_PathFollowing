@@ -106,7 +106,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
     // open loop [-1 - 1], so this compensates for closed loop)
-    private static final double KH = 1.0; 
+    private static final double KH = 0.5; 
 
     //  robot drives have a voltage "dead-zone" around zero within which the torque generated 
     //  by the motors is insufficient to overcome frictional losses in the drive. 
@@ -288,7 +288,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
         }
 
         // Calculate any correction we need based on the current and desired heading
-        double heading = _navX.getPathfinderYaw();
+        double heading = _navX.getPathfinderYawInDegrees();
         double desired_heading = r2d(_leftFollower.getHeading());
         double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
         double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;
@@ -341,6 +341,8 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
             logData.AddData("LeftFollower:X", Double.toString(GeneralUtilities.roundDouble(_leftXCoord, 1)));
             logData.AddData("LeftFollower:Y", Double.toString(GeneralUtilities.roundDouble(_leftYCoord, 1)));
 
+            logData.AddData("Follower:PathName", _pathName.toString());
+
             // snapshot values for next loop cycle
             _leftLastPosition = currentLeftSegment.position;
             _leftLastXCoord = _leftXCoord;
@@ -371,7 +373,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
             logData.AddData("RgtFollower:SegmentPos", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.position, 1)));
             logData.AddData("RgtFollower:SegmentVel", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.velocity, 2)));
             logData.AddData("RgtFollower:SegmentAccel", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.acceleration, 2)));
-            logData.AddData("RGTFollower:Heading", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.heading, 3)));
+            logData.AddData("RgtFollower:Heading", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.heading, 3)));
 
             // log calculated target position relative to start
             double rightDPSegment = currentRightSegment.position - _rightLastPosition;
