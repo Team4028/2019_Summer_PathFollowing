@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Robot;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
+import frc.robot.pathWaypoints.LeftTurn10FtR_wp;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.entities.EncoderFollowerPIDGainsBE;
@@ -31,7 +32,7 @@ import jaci.pathfinder.Trajectory.Segment;
 import jaci.pathfinder.followers.DistanceFollower;
 
 // Command to Drive following a Path using Open Loop on the TalonSRX and Notifier for the RoboRio loop
-public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPublisher {
+public class DriveFollowPathOpenLoopFromWaypoints extends Command implements IBeakSquadDataPublisher {
 
     // working variables
     private Chassis _chassis = Robot._Chassis;
@@ -111,13 +112,13 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     // ======================================================================================
     // constructor
     // ======================================================================================
-    public DriveFollowPathOpenLoop(String pathName, Runnable loggingMethodDelegate) {
+    public DriveFollowPathOpenLoopFromWaypoints(String pathName, Runnable loggingMethodDelegate) throws Exception {
         // Use requires() here to declare subsystem dependencies
         requires(_chassis);
         setInterruptible(true);
 
         _pathName = pathName;
-        importPath(pathName);
+        loadPath(pathName);
 
         _leftFollower.configurePIDVA(_leftFollowerGains.KP, 
                                         _leftFollowerGains.KI, 
@@ -204,27 +205,21 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     // https://github.com/JacisNonsense/Pathfinder/wiki/Pathfinder-for-FRC---Java
     // https://wpilib.screenstepslive.com/s/currentCS/m/84338/l/1021631-integrating-path-following-into-a-robot-program
     // https://www.chiefdelph:i.com/t/tuning-pathfinder-pid-talon-motion-profiling-magic-etc/162516
-    private void importPath(String pathName) {
-        try {
-            // deploy folder is /home/lvuser/deploy/paths/output
-            // JACI's tool
-            // Note: Bug in this version of PathFollower, generated paths are in wrong filename
-            String leftFileName =  "output/" + pathName + ".right";
-            String rgtFileName = "output/" + pathName + ".left";
+    private void loadPath(String pathName) throws Exception {
+      // deploy folder is /home/lvuser/deploy/paths/output
+      // JACI's tool
+      switch(pathName)
+      {
+        case "LeftTurn10FtR_wp":
+          LeftTurn10FtR_wp paths = new LeftTurn10FtR_wp();
+          _leftFollower = new DistanceFollower(paths.get_leftTrajectory());
+          _rightFollower = new DistanceFollower(paths.get_rightTrajectory());
+          _loopPeriodInMS = paths.get_leftTrajectory().get(0).dt;
+          break;
 
-            // Read the path files from the file system
-            Trajectory leftTrajectory = PathfinderFRC.getTrajectory(leftFileName);
-            Trajectory rightTrajectory = PathfinderFRC.getTrajectory(rgtFileName);
-
-            // Set the two paths in the followers
-            _leftFollower = new DistanceFollower(leftTrajectory);
-            _rightFollower = new DistanceFollower(rightTrajectory);
-
-            _loopPeriodInMS = leftTrajectory.get(0).dt;
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        default:
+          throw new Exception("Cannot find path: " + pathName);
+      }
     }
 
     private void followPath() {
