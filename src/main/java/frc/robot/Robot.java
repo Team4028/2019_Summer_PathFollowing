@@ -103,7 +103,7 @@ public class Robot extends TimedRobot {
     _isNotifierRunning = true;
 
     // setup auton command
-    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2",this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn10ftR",this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {
