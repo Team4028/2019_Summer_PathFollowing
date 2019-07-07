@@ -20,7 +20,6 @@ import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.interfaces.IDataLogger;
 import frc.robot.interfaces.LogDestination;
-import frc.robot.interfaces.PathFileType;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.subsystems.Chassis;
 import frc.robot.util.DataLogger;
@@ -104,8 +103,7 @@ public class Robot extends TimedRobot {
     _isNotifierRunning = true;
 
     // setup auton command
-    //_autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2",PathFileType.PATHWEAVER ,this::logAllData);
-    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2",PathFileType.PATHWEAVER ,this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoop("LeftTurn_v2",this::logAllData);
 
     // schedule the autonomous command
     if (_autonomousCommand != null) {

@@ -12,7 +12,13 @@ import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
 
-public class DriveOpenLoopStep extends Command 
+// Command used to find VIntercept for DriveFollowPathOpenLoop
+/*
+**  Run this command and graph the results (%VBus vs Actual Velocity)
+**  Find the minimum command that actually starts teh robot moving
+**  FRC Robots have a non-zero deadband that we need to use a fixed offset to motor commands in open-loop path following
+*/
+public class DriveOpenLoopStepVBus extends Command 
 {
 
   // working variables
@@ -28,7 +34,7 @@ public class DriveOpenLoopStep extends Command
 
   public final long RUN_EACH_STEP_IN_MS = 250;
 
-  public DriveOpenLoopStep(int targetTotalRunTimeInSec, double vBusStep) 
+  public DriveOpenLoopStepVBus(int targetTotalRunTimeInSec, double vBusStep) 
   {
     // Use requires() here to declare subsystem dependencies
     requires(_chassis);

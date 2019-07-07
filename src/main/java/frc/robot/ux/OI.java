@@ -3,7 +3,7 @@ package frc.robot.ux;
 import frc.robot.RobotMap;
 import frc.robot.commands.chassis.DriveClosedLoopFixedVelocity;
 import frc.robot.commands.chassis.DriveClosedLoopStepVelocity;
-import frc.robot.commands.chassis.DriveOpenLoopStep;
+import frc.robot.commands.chassis.DriveOpenLoopStepVBus;
 import frc.robot.commands.chassis.StopChassis;
 import frc.robot.commands.chassis.ZeroSensors;
 import frc.robot.subsystems.Chassis;
@@ -40,7 +40,7 @@ public class OI {
 		_driverController.a.whenPressed(new DriveClosedLoopFixedVelocity("3_20", Chassis.PID_PROFILE_SLOT_IDX_LS, 3, 20.0, 20.0));
 		_driverController.b.whenPressed(new StopChassis());
 		_driverController.x.whenPressed(new ZeroSensors());
-		_driverController.y.whenPressed(new DriveOpenLoopStep(25, 0.025));
+		_driverController.y.whenPressed(new DriveOpenLoopStepVBus(25, 0.025));
 		//_driverController.y.whenPressed(new DriveClosedLoopStepVelocity(30, 0.25, Chassis.PID_PROFILE_SLOT_IDX_LS));
 
 		// =========== Operator ======================================

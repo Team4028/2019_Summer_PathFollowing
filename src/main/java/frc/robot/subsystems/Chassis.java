@@ -22,7 +22,9 @@ import frc.robot.RobotMap;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.util.GeneralUtilities;
+import frc.robot.util.PoseEstimationV1;
 import frc.robot.entities.MotorCtrPIDGainsBE;
+import frc.robot.entities.RobotPoseBE;
 import frc.robot.entities.LogDataBE;
 
 /**
@@ -41,16 +43,17 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   private static final int BIG_NUMBER = (int) 1e6;
 
   //Graphing Paths Utility Varibales
-  private double _leftXCoord;
-  private double _leftYCoord;
-  private double _lastLPosition = 0;
-  private double _leftLastXCoord = 0;
-  private double _leftLastYCoord = 12;
-  private double _rightXCoord;
-  private double _rightYCoord;
-  private double _lastRPosition = 0;
-  private double _rightLastXCoord = 0;
-  private double _rightLastYCoord = -12;
+  //private double _leftXCoord;
+  //private double _leftYCoord;
+  //private double _lastLPosition = 0;
+  //private double _leftLastXCoord = 0;
+  //private double _leftLastYCoord = 12;
+  //private double _rightXCoord;
+  //private double _rightYCoord;
+  //private double _lastRPosition = 0;
+  //private double _rightLastXCoord = 0;
+  //private double _rightLastYCoord = -12;
+  private RobotPoseBE _previousActualRobotPose = new RobotPoseBE(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
   private GyroNavX _navX = GyroNavX.getInstance();
   
@@ -245,17 +248,17 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   {
     _leftMaster.getSensorCollection().setQuadraturePosition(0, CAN_TIMEOUT_MSECS_PERIODIC);
     _rightMaster.getSensorCollection().setQuadraturePosition(0, CAN_TIMEOUT_MSECS_PERIODIC);
+
+    _previousActualRobotPose = new RobotPoseBE(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   }
 
   public void stop(boolean isSetBrakeMode) 
   {
     setOpenLoopVelocityCmd(0.0, 0.0);
-    if(isSetBrakeMode)
-    {
+    if(isSetBrakeMode) {
       setBrakeMode(NeutralMode.Brake);
     }
-    else
-    {
+    else {
       setBrakeMode(NeutralMode.Coast);
     }
 
@@ -320,16 +323,16 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   }
 
   // Postion
-  public double getLeftEncoderPositionInNU() {
+  private double getLeftEncoderPositionInNU() {
     return _leftMaster.getSelectedSensorPosition(0);
   }
 
-  public double getLeftMotorOutputVoltage()
+  private double getLeftMotorOutputVoltage()
   {
     return _leftMaster.getMotorOutputVoltage();
   }
 
-  public double getRightMotorOutputVoltage()
+  private double getRightMotorOutputVoltage()
   {
     return _rightMaster.getMotorOutputVoltage();
   }
@@ -347,44 +350,44 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   }
 
   // Velocity
-  public double getLeftEncoderVelocityInNUPer100mS() {
+  private double getLeftEncoderVelocityInNUPer100mS() {
     return _leftMaster.getSelectedSensorVelocity(0);
   }
 
-  public double getRightEncoderVelocityInNUPer100mS() {
+  private double getRightEncoderVelocityInNUPer100mS() {
     return _rightMaster.getSelectedSensorVelocity(0);
   }
 
-  public double getLeftMasterClosedLoopTarget() 
+  private double getLeftMasterClosedLoopTarget() 
   {
     if (_leftMaster.getControlMode() != ControlMode.PercentOutput) { return _leftMaster.getClosedLoopTarget(0); }
     else { return 0; }
   }
 
-  public double getRightMasterClosedLoopTarget()
+  private double getRightMasterClosedLoopTarget()
   {
     if (_rightMaster.getControlMode() != ControlMode.PercentOutput)
     { return _rightMaster.getClosedLoopTarget(0); }
     else { return 0; }
   }
 
-  public double getLeftEncoderClosedLoopError()
+  private double getLeftEncoderClosedLoopError()
   {
     if (_leftMaster.getControlMode() != ControlMode.PercentOutput) { return _leftMaster.getClosedLoopError(0); }
     else { return 0; }
   }
 
-  public double getRightEncoderClosedLoopError() 
+  private double getRightEncoderClosedLoopError() 
   {
     if (_rightMaster.getControlMode() != ControlMode.PercentOutput) { return _rightMaster.getClosedLoopError(0); }
     else { return 0; }
   }
 
-  public double getLeftWheelVelocityInRPM() {
+  private double getLeftWheelVelocityInRPM() {
     return getLeftEncoderVelocityInNUPer100mS() * (600 / ENCODER_COUNTS_PER_WHEEL_REV);
   }
 
-  public double getRightWheelVelocityInRPM() {
+  private double getRightWheelVelocityInRPM() {
     return getRightEncoderVelocityInNUPer100mS() * (600 / ENCODER_COUNTS_PER_WHEEL_REV);
   }
 
@@ -435,6 +438,12 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   @Override
   public void updateLogData(LogDataBE logData, boolean isVerboseLoggingEnabled) 
   {
+    // calc new robot pose
+    RobotPoseBE currentActualRobotPose = PoseEstimationV1.EstimateNewPose(_previousActualRobotPose,
+                                                                            getLeftChassisPositionInInches(),
+                                                                            getRightChassisPositionInInches(),
+                                                                            _navX.getPathfinderYawInDegrees());
+
     // ======= Left Log Values ======================================================================
     if(isVerboseLoggingEnabled){
       logData.AddData("Chassis:Left%VBusCmd", Double.toString(_leftPercentVBusCmd));
@@ -461,32 +470,15 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       _sb.append(" |d: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:LeftPIDGains", _sb.toString());
-    } else {
-      // EXPLANATION OF STATE ESTIMATION
-      // Since we don't have the (x,y) coordinates of each side of the chassis, we need to calculate them in order
-      // to be able to map graphically the trajectory of the chassis. The information we do have is position and 
-      // heading at every scan cycle, so using Euler's Method (Calculus stuff), we can add successive vectors to
-      // closely map the actual trajectory (nearly 100% resolution)
+    } 
+    logData.AddData("Chassis:LeftActPosInInches", Double.toString(GeneralUtilities.roundDouble(getLeftChassisPositionInInches(), 1)));
+    logData.AddData("Chassis:LeftActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getLeftChassisVelocityInInchesPerSec(), 2)));
+    logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_leftMaster.getMotorOutputPercent(), 2)));
 
-      double leftChassisPositionInInches = getLeftChassisPositionInInches();
-      logData.AddData("Chassis:LeftActPosInInches", Double.toString(GeneralUtilities.roundDouble(leftChassisPositionInInches, 1)));
-      logData.AddData("Chassis:LeftActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getLeftChassisVelocityInInchesPerSec(), 2)));
-      logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_leftMaster.getMotorOutputPercent(), 2)));
 
-      double leftDPSegment = leftChassisPositionInInches - _lastLPosition; //Calculate dP (Current position - last position)
-      double leftDXSegment = leftDPSegment * Math.cos(_navX.getPathfinderYawInRadians()); // dX = dP * cos(heading) (Think traingles)
-      double leftDYSegment = -leftDPSegment * Math.sin(_navX.getPathfinderYawInRadians()); //dY = -dP * sin(heading) (Inverts Y to make left turns go negative on a graph)
+    logData.AddData("Chassis:LeftX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftXInInches, 1)));
+    logData.AddData("Chassis:LeftY", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftYInInches, 1)));
 
-      _leftXCoord = _leftLastXCoord + leftDXSegment; // X (Current Position) = dX (Change in X) + X last (Previous Position)
-      _leftYCoord = _leftLastYCoord + leftDYSegment; // Y (Current Position) = dY (Change in Y) + Y last (Previous Position)
-
-      logData.AddData("Chassis:LeftX", Double.toString(GeneralUtilities.roundDouble(_leftXCoord, 1)));
-      logData.AddData("Chassis:LeftY", Double.toString(GeneralUtilities.roundDouble(_leftYCoord, 1)));
-
-      _lastLPosition = leftChassisPositionInInches;
-      _leftLastXCoord = _leftXCoord;
-      _leftLastYCoord = _leftYCoord;
-    }
     
     // ======= Right Log Values ======================================================================
     if(isVerboseLoggingEnabled){
@@ -514,27 +506,16 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
       _sb.append(" |d: ");
       _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightActiveSlotConfig.kD, 3))); 
       logData.AddData("Chassis:RgtPIDGains", _sb.toString());
-    } else {
+    } 
 
-      double rgtChassisPositionInInches = getRightChassisPositionInInches();
-      logData.AddData("Chassis:RgtActPosInInches", Double.toString(GeneralUtilities.roundDouble(rgtChassisPositionInInches, 1)));
-      logData.AddData("Chassis:RgtActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getRightChassisVelocityInInchesPerSec(), 2)));
-      logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_rightMaster.getMotorOutputPercent(), 2)));
+    logData.AddData("Chassis:RgtActPosInInches", Double.toString(GeneralUtilities.roundDouble(getRightChassisPositionInInches(), 1)));
+    logData.AddData("Chassis:RgtActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getRightChassisVelocityInInchesPerSec(), 2)));
+    logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_rightMaster.getMotorOutputPercent(), 2)));
 
-      double rgtDPSegment = rgtChassisPositionInInches - _lastRPosition;
-      double rgtDXSegment = rgtDPSegment * Math.cos(_navX.getPathfinderYawInRadians());
-      double rgtDYSegment = -rgtDPSegment * Math.sin(_navX.getPathfinderYawInRadians());
+    logData.AddData("Chassis:RgtX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.RightXInInches, 1)));
+    logData.AddData("Chassis:RgtY", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.RightYInInches, 1)));
 
-      _rightXCoord = _rightLastXCoord + rgtDXSegment;
-      _rightYCoord = _rightLastYCoord + rgtDYSegment;
-
-      logData.AddData("Chassis:RgtX", Double.toString(GeneralUtilities.roundDouble(_rightXCoord, 1)));
-      logData.AddData("Chassis:RgtY", Double.toString(GeneralUtilities.roundDouble(_rightYCoord, 1)));
-
-      _lastRPosition = rgtChassisPositionInInches;
-      _rightLastXCoord = _rightXCoord;
-      _rightLastYCoord = _rightYCoord;
-    }
+    _previousActualRobotPose = currentActualRobotPose;
   }
 
   @Override
@@ -551,9 +532,9 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     SmartDashboard.putNumber("Chassis:RgtEncClosedLoopErr", getRightEncoderClosedLoopError());
     SmartDashboard.putNumber("Chassis:RgtMtrOutputVolts", getRightMotorOutputVoltage());
 
-    SmartDashboard.putNumber("Chassis:LeftXPosition", _leftXCoord);
-    SmartDashboard.putNumber("Chassis:LeftYPosition", _leftYCoord);
-    SmartDashboard.putNumber("Chassis:RightXPosition", _rightXCoord);
-    SmartDashboard.putNumber("Chassis:RightYPosition", _rightYCoord);
+    SmartDashboard.putNumber("Chassis:LeftXPosition", _previousActualRobotPose.LeftXInInches);
+    SmartDashboard.putNumber("Chassis:LeftYPosition", _previousActualRobotPose.LeftYInInches);
+    SmartDashboard.putNumber("Chassis:RightXPosition", _previousActualRobotPose.RightXInInches);
+    SmartDashboard.putNumber("Chassis:RightYPosition", _previousActualRobotPose.RightYInInches);
   }
 }

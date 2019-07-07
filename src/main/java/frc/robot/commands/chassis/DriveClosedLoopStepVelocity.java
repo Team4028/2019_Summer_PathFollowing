@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
 
+// Command used to test effectiveness closed loop tuning to changes in the command in IPS
 public class DriveClosedLoopStepVelocity extends Command 
 {
 

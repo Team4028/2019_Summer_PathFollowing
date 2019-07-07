@@ -5,7 +5,7 @@ import frc.robot.Robot;
 import frc.robot.subsystems.Chassis;
 import frc.robot.ux.OI;
 
-// Command to Drive using Joy Sticks
+// Command to Drive under Operator Control using Joy Sticks
 public class DriveWithControllers extends Command {
 
   // working variables
