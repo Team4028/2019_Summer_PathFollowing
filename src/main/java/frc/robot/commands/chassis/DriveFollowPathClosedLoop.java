@@ -12,7 +12,6 @@ import static jaci.pathfinder.Pathfinder.r2d;
 import java.io.IOException;
 
 import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Robot;
@@ -61,8 +60,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
     private String _pathName = "";
     private Runnable _loggingMethodDelegate;
     private double _loopPeriodInMS = 0;
-    private double _lastLoopTimeInMS = 0;
-
+  
     private StringBuilder _sb = new StringBuilder();
 
     /*
@@ -146,9 +144,6 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         // set chassis pid constants
         _chassis.setActivePIDProfileSlot(chassisPidConstant);
 
-        // initialize last loop timestamp
-        _lastLoopTimeInMS = RobotController.getFPGATime() / 1000.0;
-
         // Start running the path
         _notifier.startPeriodic(_loopPeriodInMS);
 
@@ -225,13 +220,6 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
 
     private void followPath() {
 
-        double currentTimeInMS = RobotController.getFPGATime() / 1000.0;
-        //System.out.println("CmdNotifier: " 
-        //                    + "L " + _leftFollower.isFinished() 
-         //                   + " R " + _rightFollower.isFinished()
-        //                    + " t " + GeneralUtilities.roundDouble(currentTimeInMS - _lastLoopTimeInMS, 1));
-        _lastLoopTimeInMS = currentTimeInMS;
-
         // Get the left and right power output from the distance calculator
         /*
             double calculated_value =
@@ -260,7 +248,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         }
 
         // Calculate any correction we need based on the current and desired heading
-        double heading = _navX.getPathfinderYawInDegrees();
+        double heading = _navX.getPathfinderHeadingInDegrees();
         double desired_heading = r2d(_leftFollower.getHeading());
         double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
         double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;

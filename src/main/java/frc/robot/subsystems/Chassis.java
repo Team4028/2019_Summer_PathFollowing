@@ -22,7 +22,7 @@ import frc.robot.RobotMap;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.sensors.GyroNavX;
 import frc.robot.util.GeneralUtilities;
-import frc.robot.util.PoseEstimationV1;
+import frc.robot.util.PoseEstimation;
 import frc.robot.entities.MotorCtrPIDGainsBE;
 import frc.robot.entities.RobotPoseBE;
 import frc.robot.entities.LogDataBE;
@@ -249,7 +249,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     _leftMaster.getSensorCollection().setQuadraturePosition(0, CAN_TIMEOUT_MSECS_PERIODIC);
     _rightMaster.getSensorCollection().setQuadraturePosition(0, CAN_TIMEOUT_MSECS_PERIODIC);
 
-    _previousActualRobotPose = new RobotPoseBE(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    // reset the actual robot pose estimate
+    _previousActualRobotPose = RobotPoseBE.init();
   }
 
   public void stop(boolean isSetBrakeMode) 
@@ -439,10 +440,10 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
   public void updateLogData(LogDataBE logData, boolean isVerboseLoggingEnabled) 
   {
     // calc new robot pose
-    RobotPoseBE currentActualRobotPose = PoseEstimationV1.EstimateNewPose(_previousActualRobotPose,
+    RobotPoseBE currentActualRobotPose = PoseEstimation.EstimateNewPoseV1(_previousActualRobotPose,
                                                                             getLeftChassisPositionInInches(),
                                                                             getRightChassisPositionInInches(),
-                                                                            _navX.getPathfinderYawInDegrees());
+                                                                            _navX.getPathfinderHeadingInDegrees());
 
     // ======= Left Log Values ======================================================================
     if(isVerboseLoggingEnabled){
@@ -476,8 +477,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_leftMaster.getMotorOutputPercent(), 2)));
 
 
-    logData.AddData("Chassis:LeftX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftXInInches, 1)));
-    logData.AddData("Chassis:LeftY", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftYInInches, 1)));
+    logData.AddData("Chassis:LeftPoseX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftXInInches, 1)));
+    logData.AddData("Chassis:LeftPoseY", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftYInInches, 1)));
 
     
     // ======= Right Log Values ======================================================================
@@ -512,8 +513,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     logData.AddData("Chassis:RgtActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getRightChassisVelocityInInchesPerSec(), 2)));
     logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_rightMaster.getMotorOutputPercent(), 2)));
 
-    logData.AddData("Chassis:RgtX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.RightXInInches, 1)));
-    logData.AddData("Chassis:RgtY", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.RightYInInches, 1)));
+    logData.AddData("Chassis:RgtPoseX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.RightXInInches, 1)));
+    logData.AddData("Chassis:RgtPoseY", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.RightYInInches, 1)));
 
     _previousActualRobotPose = currentActualRobotPose;
   }

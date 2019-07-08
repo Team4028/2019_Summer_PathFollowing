@@ -10,7 +10,7 @@ package frc.robot.util;
 import frc.robot.entities.RobotPoseBE;
 
 /**
- * This class estimates the Robots new Pose based on its incremental movement from a previous reference position
+ * This class estimates the Robots new Pose based on its incremental movement from a previous position
  * 
  * https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
  * http://team449.shoutwiki.com/wiki/Pose_Estimation
@@ -21,9 +21,9 @@ import frc.robot.entities.RobotPoseBE;
  * heading at every scan cycle, so using Euler's Method (Calculus stuff), we can add successive vectors to
  * closely map the actual trajectory (nearly 100% resolution)
  */
-public class PoseEstimationV1 {
+public class PoseEstimation {
 
-    public static RobotPoseBE EstimateNewPose(RobotPoseBE previousPose, double currentLeftPositionInInches, double currentRightPositionInInches, 
+    public static RobotPoseBE EstimateNewPoseV1(RobotPoseBE previousPose, double currentLeftPositionInInches, double currentRightPositionInInches, 
                                                 double currentHeadingInDegrees) {
 
         // calc deltas from last position
@@ -31,15 +31,16 @@ public class PoseEstimationV1 {
         double rgtDeltaPositionInInches = (currentRightPositionInInches - previousPose.RightPositionInInches);
         double deltaHeadingInDegrees = (currentHeadingInDegrees - previousPose.HeadingInDegrees);
 
-        double avgNewHeadingInDegree = Math.toRadians(previousPose.HeadingInDegrees) + (deltaHeadingInDegrees / 2.0);
+        // assume the direction is the average between the old and new
+        double avgNewHeadingInDegrees = Math.toRadians(previousPose.HeadingInDegrees + (deltaHeadingInDegrees / 2.0));
 
         // calc left x&y position, remember args to cos() & sin() is in radians!
-        double leftDeltaXInInches = leftDeltaPositionInInches * Math.cos(avgNewHeadingInDegree);
-        double leftDeltaYInInches = leftDeltaPositionInInches * Math.sin(avgNewHeadingInDegree);
+        double leftDeltaXInInches = leftDeltaPositionInInches * Math.cos(avgNewHeadingInDegrees);
+        double leftDeltaYInInches = leftDeltaPositionInInches * Math.sin(avgNewHeadingInDegrees);
 
         // calc right x&y position, remember args to cos() & sin() is in radians!
-        double rgtDeltaXInInches = rgtDeltaPositionInInches * Math.cos(avgNewHeadingInDegree);
-        double rgtDeltaYInInches = rgtDeltaPositionInInches * Math.sin(avgNewHeadingInDegree);
+        double rgtDeltaXInInches = rgtDeltaPositionInInches * Math.cos(avgNewHeadingInDegrees);
+        double rgtDeltaYInInches = rgtDeltaPositionInInches * Math.sin(avgNewHeadingInDegrees);
 
         return new RobotPoseBE(currentLeftPositionInInches,
                                 previousPose.LeftXInInches + leftDeltaXInInches,

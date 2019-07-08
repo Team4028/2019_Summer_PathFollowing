@@ -48,4 +48,9 @@ public class RobotPoseBE {
     
         HeadingInDegrees = headingInDegrees;
     }
+
+    public static RobotPoseBE init()
+    {
+        return new RobotPoseBE(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    }
 }

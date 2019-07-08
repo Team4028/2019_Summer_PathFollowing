@@ -12,7 +12,6 @@ import static jaci.pathfinder.Pathfinder.r2d;
 import java.io.IOException;
 
 import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Robot;
@@ -23,7 +22,7 @@ import frc.robot.entities.EncoderFollowerPIDGainsBE;
 import frc.robot.entities.LogDataBE;
 import frc.robot.entities.RobotPoseBE;
 import frc.robot.util.GeneralUtilities;
-import frc.robot.util.PoseEstimationV1;
+import frc.robot.util.PoseEstimation;
 import jaci.pathfinder.Pathfinder;
 import jaci.pathfinder.PathfinderFRC;
 import jaci.pathfinder.Trajectory;
@@ -63,9 +62,8 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
     private String _pathName = "";
     private Runnable _loggingMethodDelegate;
     private double _loopPeriodInMS = 0;
-    private double _lastLoopTimeInMS = 0;
 
-    private RobotPoseBE _previousTargetRobotPose = new RobotPoseBE(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    private RobotPoseBE _previousTargetRobotPose = RobotPoseBE.init();
 
     // init stringbuilder size to improve perf
     private StringBuilder _sb = new StringBuilder(250);
@@ -78,8 +76,8 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
      * 
      * kI -> pathfinder ignores kI
      * 
-     * kD -> Derivative gain. Units: %/(m/s). Iâ€™ll typically only tune this if
-     * tracking is bad, so usually Iâ€™ll keep it at 0 unless I have a reason to
+     * kD -> Derivative gain. Units: %/(m/s). I'll typically only tune this if
+     * tracking is bad, so usually I'll keep it at 0 unless I have a reason to
      * change it. You can think of it like a way to increase the value that the kV
      * term puts out, which can help in the lower velocity ranges if your
      * acceleration is bad.
@@ -90,7 +88,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
      * implementations (i.e. Talon SRX) this will be calculated differently.
      * 
      * kA -> Acceleration Feed-forward gain. Units: %/(m/s/s). I typically leave
-     * this value at 0, but you can adjust it if youâ€™re unhappy with the speed of
+     * this value at 0, but you can adjust it if you're unhappy with the speed of
      * your robot and need more power in the acceleration phase(s) of the loop. This
      * value can also be pretty dangerous if you tune it too high.
      */
@@ -144,9 +142,6 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
         // Make sure we're starting at the beginning of the path
         _leftFollower.reset();
         _rightFollower.reset();
-
-        // initialize last loop timestamp
-        _lastLoopTimeInMS = RobotController.getFPGATime() / 1000.0;
 
         // Start running the path
         _notifier.startPeriodic(_loopPeriodInMS);
@@ -208,7 +203,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
         try {
             // deploy folder is /home/lvuser/deploy/paths/output
             // JACI's tool
-            // Note: Bug in this version of PathFollower, generated paths are in wrong filename
+            // Note: Bug in this version of PathFollower, generated paths are in the opposite filename
             String leftFileName =  "output/" + pathName + ".right";
             String rgtFileName = "output/" + pathName + ".left";
 
@@ -229,19 +224,13 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
 
     private void followPath() {
 
-        double currentTimeInMS = RobotController.getFPGATime() / 1000.0;
-        //System.out.println("CmdNotifier: " 
-        //                    + "L " + _leftFollower.isFinished() 
-         //                   + " R " + _rightFollower.isFinished()
-        //                    + " t " + GeneralUtilities.roundDouble(currentTimeInMS - _lastLoopTimeInMS, 1));
-        _lastLoopTimeInMS = currentTimeInMS;
-
         // Get the left and right power output from the distance calculator
         /*
             double calculated_value =
-            kp * error +                                    // Proportional
-            kd * ((error - last_error) / seg.dt) +          // Derivative
-            (kv * seg.velocity + ka * seg.acceleration);    // V and A Terms
+                    kp * error +                                    // Proportional
+                    kd * ((error - last_error) / seg.dt) +          // Derivative
+                    kv * seg.velocity + 
+                    ka * seg.acceleration);    // V and A Terms
         */
         double left_speed = 
                 _leftFollower.calculate(_chassis.getLeftChassisPositionInInches() - _leftStartingDistance);
@@ -264,7 +253,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
         }
 
         // Calculate any correction we need based on the current and desired heading
-        double heading = _navX.getPathfinderYawInDegrees();
+        double heading = _navX.getPathfinderHeadingInDegrees();
         double desired_heading = r2d(_leftFollower.getHeading());
         double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
         double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;
@@ -290,7 +279,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
             Segment currentRightSegment = _rightFollower.getSegment();
 
             // calc new robot pose
-            RobotPoseBE currentTargetRobotPose = PoseEstimationV1.EstimateNewPose(_previousTargetRobotPose,
+            RobotPoseBE currentTargetRobotPose = PoseEstimation.EstimateNewPoseV1(_previousTargetRobotPose,
                                                                                     currentLeftSegment.position,
                                                                                     currentRightSegment.position,
                                                                                     currentLeftSegment.heading);
@@ -324,8 +313,8 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
             logData.AddData("LeftFollower:Heading", Double.toString(GeneralUtilities.roundDouble(currentLeftSegment.heading, 3)));
             
             // log calculated target position relative to start
-            logData.AddData("LeftFollower:X", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.LeftXInInches, 1)));
-            logData.AddData("LeftFollower:Y", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.LeftYInInches, 1)));
+            logData.AddData("LeftFollower:PoseX", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.LeftXInInches, 1)));
+            logData.AddData("LeftFollower:PoseY", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.LeftYInInches, 1)));
 
             // *********************************
             // *********** RIGHT SIDE **********
@@ -355,8 +344,8 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
             logData.AddData("RgtFollower:Heading", Double.toString(GeneralUtilities.roundDouble(currentRightSegment.heading, 3)));
 
             // log calculated target position relative to start
-            logData.AddData("RgtFollower:X", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.RightXInInches, 1)));
-            logData.AddData("RgtFollower:Y", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.RightYInInches, 1)));
+            logData.AddData("RgtFollower:PoseX", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.RightXInInches, 1)));
+            logData.AddData("RgtFollower:PoseY", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.RightYInInches, 1)));
 
             // snapshot values for next loop cycle
             _previousTargetRobotPose = currentTargetRobotPose;

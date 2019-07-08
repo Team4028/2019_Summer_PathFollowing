@@ -9,10 +9,7 @@ package frc.robot.commands.chassis;
 
 import static jaci.pathfinder.Pathfinder.r2d;
 
-import java.io.IOException;
-
 import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Robot;
@@ -24,10 +21,8 @@ import frc.robot.entities.EncoderFollowerPIDGainsBE;
 import frc.robot.entities.LogDataBE;
 import frc.robot.entities.RobotPoseBE;
 import frc.robot.util.GeneralUtilities;
-import frc.robot.util.PoseEstimationV1;
+import frc.robot.util.PoseEstimation;
 import jaci.pathfinder.Pathfinder;
-import jaci.pathfinder.PathfinderFRC;
-import jaci.pathfinder.Trajectory;
 import jaci.pathfinder.Trajectory.Segment;
 import jaci.pathfinder.followers.DistanceFollower;
 
@@ -64,7 +59,6 @@ public class DriveFollowPathOpenLoopFromWaypoints extends Command implements IBe
     private String _pathName = "";
     private Runnable _loggingMethodDelegate;
     private double _loopPeriodInMS = 0;
-    private double _lastLoopTimeInMS = 0;
 
     private RobotPoseBE _previousTargetRobotPose = new RobotPoseBE(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
@@ -146,9 +140,6 @@ public class DriveFollowPathOpenLoopFromWaypoints extends Command implements IBe
         _leftFollower.reset();
         _rightFollower.reset();
 
-        // initialize last loop timestamp
-        _lastLoopTimeInMS = RobotController.getFPGATime() / 1000.0;
-
         // Start running the path
         _notifier.startPeriodic(_loopPeriodInMS);
 
@@ -224,13 +215,6 @@ public class DriveFollowPathOpenLoopFromWaypoints extends Command implements IBe
 
     private void followPath() {
 
-        double currentTimeInMS = RobotController.getFPGATime() / 1000.0;
-        //System.out.println("CmdNotifier: " 
-        //                    + "L " + _leftFollower.isFinished() 
-         //                   + " R " + _rightFollower.isFinished()
-        //                    + " t " + GeneralUtilities.roundDouble(currentTimeInMS - _lastLoopTimeInMS, 1));
-        _lastLoopTimeInMS = currentTimeInMS;
-
         // Get the left and right power output from the distance calculator
         /*
             double calculated_value =
@@ -259,7 +243,7 @@ public class DriveFollowPathOpenLoopFromWaypoints extends Command implements IBe
         }
 
         // Calculate any correction we need based on the current and desired heading
-        double heading = _navX.getPathfinderYawInDegrees();
+        double heading = _navX.getPathfinderHeadingInDegrees();
         double desired_heading = r2d(_leftFollower.getHeading());
         double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
         double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;
@@ -285,7 +269,7 @@ public class DriveFollowPathOpenLoopFromWaypoints extends Command implements IBe
             Segment currentRightSegment = _rightFollower.getSegment();
 
             // calc new robot pose
-            RobotPoseBE currentTargetRobotPose = PoseEstimationV1.EstimateNewPose(_previousTargetRobotPose,
+            RobotPoseBE currentTargetRobotPose = PoseEstimation.EstimateNewPoseV1(_previousTargetRobotPose,
                                                                                     currentLeftSegment.position,
                                                                                     currentRightSegment.position,
                                                                                     currentLeftSegment.heading);
