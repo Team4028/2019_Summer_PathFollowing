@@ -61,14 +61,13 @@ public class GyroNavX implements IBeakSquadDataPublisher {
     }
 
     // If you have a typical gyro, then it gives a + reading for a clockwise rotation \
-    // where Pathfinder expects this to be a negative gyro direction.
-    public double getPathfinderHeadingInDegrees() {
+    public double getHeadingInDegrees() {
         // we use YAW baswd on the mounting orientation of the NavX
-        return -1 * _navXSensor.getYaw();
+        return _navXSensor.getYaw();
     }
 
-    public double getPathfinderYawInRadians() {
-        return Math.toRadians(getPathfinderHeadingInDegrees());
+    public double getHeadingInRadians() {
+        return Math.toRadians(getHeadingInDegrees());
     }
 
     public double getPitch() {

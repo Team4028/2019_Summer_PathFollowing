@@ -443,7 +443,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     RobotPoseBE currentActualRobotPose = PoseEstimation.EstimateNewPoseV1(_previousActualRobotPose,
                                                                             getLeftChassisPositionInInches(),
                                                                             getRightChassisPositionInInches(),
-                                                                            _navX.getPathfinderHeadingInDegrees());
+                                                                            _navX.getHeadingInDegrees());
 
     // ======= Left Log Values ======================================================================
     if(isVerboseLoggingEnabled){

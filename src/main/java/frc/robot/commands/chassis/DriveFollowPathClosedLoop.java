@@ -248,7 +248,7 @@ public class DriveFollowPathClosedLoop extends Command implements IBeakSquadData
         }
 
         // Calculate any correction we need based on the current and desired heading
-        double heading = _navX.getPathfinderHeadingInDegrees();
+        double heading = _navX.getHeadingInDegrees();
         double desired_heading = r2d(_leftFollower.getHeading());
         double heading_difference = Pathfinder.boundHalfDegrees(desired_heading - heading);
         double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;

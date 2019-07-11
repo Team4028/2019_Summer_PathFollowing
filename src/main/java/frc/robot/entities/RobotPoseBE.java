@@ -7,6 +7,9 @@
 
 package frc.robot.entities;
 
+import frc.robot.Robot;
+import frc.robot.subsystems.Chassis;
+
 /**
  * Add your docs here.
  */
@@ -51,6 +54,12 @@ public class RobotPoseBE {
 
     public static RobotPoseBE init()
     {
-        return new RobotPoseBE(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        return new RobotPoseBE(0.0, 
+                                0.0, 
+                                0 + Chassis.TRACK_WIDTH_INCHES / 2.0,
+                                0.0, 
+                                0.0, 
+                                0 - Chassis.TRACK_WIDTH_INCHES / 2.0, 
+                                0.0);
     }
 }
