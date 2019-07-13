@@ -65,7 +65,7 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
         RIGHT
     }
 
-    private enum TurnChgType
+    private enum TurnCmdChgType
     {
         NONE,
         INCREASE,
@@ -97,10 +97,10 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
      * value can also be pretty dangerous if you tune it too high.
      */
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.2, 0.0, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 1.0/130.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.2, 0.0, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 1.0/130.0, 0.0);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
@@ -302,14 +302,13 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
     private VelocityCmdAdjBE CalcTurnAdjustment(double currentHeadingErrorInDegrees, VelocityCmdAdjBE previousTurnAdj) {
 
         // constants
-        final double ERROR_DEADBAND_IN_DEGREES = 0.5;
-        final double ERROR_CHG_DEADBAND_IN_DEGREES = 0.1;
+        final double ERROR_DEADBAND_IN_DEGREES = 0.25;
         final double TURN_ADJUSTMENT_IN_PERCENT_VBUS = 0.025;
         final double TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS = 0.25;    // so min 10 cycles to reach adj value
         
         // working variables
         TurnDirection turnDirection;
-        TurnChgType turnChgType;
+        TurnCmdChgType turnCmdChgType;
 
         double lastLeftTurnAdj = 0;
         double lastRgtTurnAdj = 0;
@@ -317,78 +316,113 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
         double leftTurnAdj = 0;
         double rgtTurnAdj = 0;
 
-        // if currentHeading Error < 0 :: turn right, else if currentHeading Error > 0 :: turn left
+        // currentHeadingErrorInDegrees = Target - Actual
+        //  <actual> ------  <target> if currentHeading Error > 0 :: too far left => turn right
         if (currentHeadingErrorInDegrees > ERROR_DEADBAND_IN_DEGREES) {
-            turnDirection = TurnDirection.LEFT;
-        }
-        else if (currentHeadingErrorInDegrees < (-1.0 * ERROR_DEADBAND_IN_DEGREES)) {
             turnDirection = TurnDirection.RIGHT;
         }
+        //  <target> ------  <actual> if currentHeading Error < 0 :: too far right => turn left
+        else if (currentHeadingErrorInDegrees < (-1.0 * ERROR_DEADBAND_IN_DEGREES)) {
+            turnDirection = TurnDirection.LEFT;
+        }
+        //  within +/- deadband of target
         else turnDirection = TurnDirection.NONE;
 
         // if chgInHeadingError > 0 (ie error is increasing) :: incr adj, else if chgInHeadingError < 0 (ie error is decreasing):: decr adj
         boolean didErrorSignChg = !((currentHeadingErrorInDegrees < 0) == (previousTurnAdj.HeadingErrorInDegrees < 0)); 
-        double chgInHeadingError = (Math.abs(currentHeadingErrorInDegrees) - Math.abs(previousTurnAdj.HeadingErrorInDegrees));
+        // we just crossed zero so dial back on turn
         if(didErrorSignChg) {
-            turnChgType = TurnChgType.INCREASE;
-            lastLeftTurnAdj = 0;
-            lastRgtTurnAdj = 0;
-        }
-        // error is increasing
-        else if (Math.abs(chgInHeadingError) >= Math.abs(ERROR_CHG_DEADBAND_IN_DEGREES)) {
-            turnChgType = TurnChgType.INCREASE;
+            turnCmdChgType = TurnCmdChgType.DECREASE;
             lastLeftTurnAdj = previousTurnAdj.LeftMtrCmdTurnAdj;
             lastRgtTurnAdj =  previousTurnAdj.RgtMtrCmdTurnAdj;
         }
-        // error is decreasing
-        else if (Math.abs(chgInHeadingError) <= Math.abs(ERROR_CHG_DEADBAND_IN_DEGREES)) {
-            turnChgType = TurnChgType.NONE; //TurnChgType.DECREASE; // ??????
+        // error is inside deadband
+        else if (turnDirection == TurnDirection.NONE) {
+            turnCmdChgType = TurnCmdChgType.NONE;
             lastLeftTurnAdj = previousTurnAdj.LeftMtrCmdTurnAdj;
             lastRgtTurnAdj =  previousTurnAdj.RgtMtrCmdTurnAdj;
         }
+        // error is outside deadband
         else {
-            turnChgType = TurnChgType.NONE;
+            turnCmdChgType = TurnCmdChgType.INCREASE;
             lastLeftTurnAdj = previousTurnAdj.LeftMtrCmdTurnAdj;
             lastRgtTurnAdj =  previousTurnAdj.RgtMtrCmdTurnAdj;
         }
 
+        // calc new turn adjustments
+        if (turnCmdChgType == TurnCmdChgType.INCREASE) {
+            if (turnDirection == TurnDirection.LEFT) {
+                leftTurnAdj = lastLeftTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+                rgtTurnAdj = lastRgtTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+            }
+            else if (turnDirection == TurnDirection.RIGHT) {
+                leftTurnAdj = lastLeftTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+                rgtTurnAdj = lastRgtTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+            }
+        }
+        else if (turnCmdChgType == TurnCmdChgType.DECREASE) {
+            if (turnDirection == TurnDirection.LEFT) {
+                leftTurnAdj = lastLeftTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+                rgtTurnAdj = lastRgtTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+            }
+            else if (turnDirection == TurnDirection.RIGHT) {
+                leftTurnAdj = lastLeftTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+                rgtTurnAdj = lastRgtTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
+            }
+        }
+        else if (turnCmdChgType == TurnCmdChgType.NONE) {
+            leftTurnAdj = lastLeftTurnAdj;
+            rgtTurnAdj = lastRgtTurnAdj;
+        }
+
+
+        /*
+        // =========================
         // calc left turns
+        // =========================
         if (turnDirection == TurnDirection.LEFT) {
-            if (turnChgType == TurnChgType.INCREASE) {
+            if (turnCmdChgType == TurnCmdChgType.INCREASE) {
                 leftTurnAdj = lastLeftTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
                 rgtTurnAdj = lastRgtTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
             }
-            else if (turnChgType == TurnChgType.DECREASE) {
+            else if (turnCmdChgType == TurnCmdChgType.DECREASE) {
                 leftTurnAdj = lastLeftTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
                 rgtTurnAdj = lastRgtTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
             }
-            else if (turnChgType == TurnChgType.NONE) {
+            else if (turnCmdChgType == TurnCmdChgType.NONE) {
                 leftTurnAdj = lastLeftTurnAdj;
                 rgtTurnAdj = lastRgtTurnAdj;
             }
         }
+        // =========================
         // calc right turns
+        // =========================
         else if (turnDirection == TurnDirection.RIGHT) {
-            if (turnChgType == TurnChgType.INCREASE) {
+            if (turnCmdChgType == TurnCmdChgType.INCREASE) {
                 leftTurnAdj = lastLeftTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
                 rgtTurnAdj = lastRgtTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
             }
-            else if (turnChgType == TurnChgType.DECREASE) {
+            else if (turnCmdChgType == TurnCmdChgType.DECREASE) {
                 leftTurnAdj = lastLeftTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
                 rgtTurnAdj = lastRgtTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
             }
-            else if (turnChgType == TurnChgType.NONE) {
+            else if (turnCmdChgType == TurnCmdChgType.NONE) {
                 leftTurnAdj = lastLeftTurnAdj;
                 rgtTurnAdj = lastRgtTurnAdj;
             }
         }
-        //no turn, w/i deadband
+        // =========================
+        // no turn, w/i deadband
+        // =========================
         else if (turnDirection == TurnDirection.NONE) {
             leftTurnAdj = 0;
             rgtTurnAdj = 0;
         }
+        */
 
+        // =========================
         // check max adjustment
+        // =========================
         if (leftTurnAdj > TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS) {
             leftTurnAdj = TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
         }
@@ -403,7 +437,7 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
             rgtTurnAdj = -1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
         };
 
-        return new VelocityCmdAdjBE(leftTurnAdj, rgtTurnAdj, currentHeadingErrorInDegrees);
+        return new VelocityCmdAdjBE(leftTurnAdj, rgtTurnAdj, currentHeadingErrorInDegrees, turnDirection.toString(), turnCmdChgType.toString());
     };
 
 
@@ -413,6 +447,9 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
         if(!_leftFollower.isFinished() && !_rightFollower.isFinished()) {
 
             logData.AddData("Follower:PathName", _pathName.toString());
+            logData.AddData("Follower:HeadingErrorInDeg", Double.toString(GeneralUtilities.roundDouble(_lastTurnAdjustment.HeadingErrorInDegrees, 3)));
+            logData.AddData("Follower:TurnDirection", _lastTurnAdjustment.TurnDirection);
+            logData.AddData("Follower:TurnChgType", _lastTurnAdjustment.TurnChgType);
 
             // grab current segments
             Segment currentLeftSegment = _leftFollower.getSegment();

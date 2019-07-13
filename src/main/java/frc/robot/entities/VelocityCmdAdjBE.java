@@ -18,15 +18,19 @@ public class VelocityCmdAdjBE {
     public double LeftBaseMtrCmd;
     public double RgtBaseMtrCmd;
 
+    public final String TurnDirection;
+    public final String TurnChgType;
 
-    public VelocityCmdAdjBE(double leftMtrCmdTurnAdj, double rgtMtrCmdTurnAdj, double headingErrorInDegrees) {
+    public VelocityCmdAdjBE(double leftMtrCmdTurnAdj, double rgtMtrCmdTurnAdj, double headingErrorInDegrees, String turnDirection, String turnChgType) {
         LeftMtrCmdTurnAdj = leftMtrCmdTurnAdj;
         RgtMtrCmdTurnAdj = rgtMtrCmdTurnAdj;
         HeadingErrorInDegrees = headingErrorInDegrees;
+        TurnDirection = turnDirection;
+        TurnChgType = turnChgType;
     }
 
     public static VelocityCmdAdjBE init() {
-        return new VelocityCmdAdjBE(0.0, 0.0, 0.0);
+        return new VelocityCmdAdjBE(0.0, 0.0, 0.0, "", "");
     }
 
     public double LeftFinalMtrCmd() {
