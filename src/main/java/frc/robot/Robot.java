@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
 import frc.robot.commands.chassis.DriveFollowPathOpenLoop;
 import frc.robot.commands.chassis.DriveFollowPathOpenLoopV2;
+import frc.robot.commands.chassis.DriveFollowPathOpenLoopV3;
 import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
 import frc.robot.interfaces.IDataLogger;
@@ -103,8 +104,8 @@ public class Robot extends TimedRobot {
     _isNotifierRunning = true;
 
     // setup auton command
-    //_autonomousCommand = new DriveFollowPathOpenLoop("Straight240in",this::logAllData);
-    _autonomousCommand = new DriveFollowPathOpenLoopV2("Straight240in",this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoopV3("Straight240in", this::logAllData);
+    //_autonomousCommand = new DriveFollowPathOpenLoopV2("Straight240in", this::logAllData);
     // schedule the autonomous command
     if (_autonomousCommand != null) {
       _autonomousCommand.start();

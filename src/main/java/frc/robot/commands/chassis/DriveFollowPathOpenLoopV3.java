@@ -23,6 +23,7 @@ import frc.robot.entities.LogDataBE;
 import frc.robot.entities.RobotPoseBE;
 import frc.robot.entities.VelocityCmdAdjBE;
 import frc.robot.entities.VelocityCmdBE;
+import frc.robot.util.BeakDistanceFollower;
 import frc.robot.util.GeneralUtilities;
 import frc.robot.util.PoseEstimation;
 import jaci.pathfinder.Pathfinder;
@@ -32,14 +33,15 @@ import jaci.pathfinder.Trajectory.Segment;
 import jaci.pathfinder.followers.DistanceFollower;
 
 // Command to Drive following a Path using Open Loop on the TalonSRX and Notifier for the RoboRio loop
-public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadDataPublisher {
+// This version uses a custom implementation of Jaci's DistanceFollower called BeakDistanceFollower
+public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadDataPublisher {
 
     // working variables
     private Chassis _chassis = Robot._Chassis;
     private GyroNavX _navX = Robot._NavX;
 
-    private DistanceFollower _leftFollower;
-    private DistanceFollower _rightFollower;
+    private BeakDistanceFollower _leftFollower;
+    private BeakDistanceFollower _rightFollower;
 
     // create notifier that will drive the timing loops
     private Notifier _notifier = new Notifier(this::followPath);
@@ -49,7 +51,6 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
     private double _rightStartingDistance = 0;
 
     private VelocityCmdAdjBE _lastTurnAdjustment;
-    private double _lastLeftPosErrInInches, _lastRightPosErrInInches;
     private VelocityCmdBE _lastLeftMtrCmd;
     private VelocityCmdBE _lastRgtMtrCmd;
 
@@ -90,7 +91,7 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
      * tracking is bad, so usually I'll keep it at 0 unless I have a reason to
      * change it. You can think of it like a way to increase the value that the kV
      * term puts out, which can help in the lower velocity ranges if your
-     * acceleration is bad.
+     * acceleration is bad.  (Is Postion Error Growing?)
      * 
      * kV -> Velocity Feed-forward gain. Units: %/(m/s). This should be
      * max_%/max_vel (i.e. 1 / max_vel). This is used to give the loop some kind of
@@ -103,10 +104,10 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
      * value can also be pretty dangerous if you tune it too high.
      */
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.05, 0.0, 1.0/130.0, 0.01);
+                            = new EncoderFollowerPIDGainsBE(0.05, 0.02, 1.0/130.0, 0.01);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.05, 0.0, 1.0/130.0, 0.01);
+                            = new EncoderFollowerPIDGainsBE(0.05, 0.02, 1.0/130.0, 0.01);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
@@ -115,11 +116,11 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
 
     //  robot drives have a voltage "dead-zone" around zero within which the torque generated 
     //  by the motors is insufficient to overcome frictional losses in the drive. 
-    private static final double V_INTERCEPT = 0.0; //0.08;
+    private static final double V_INTERCEPT = 0.08;
     // ======================================================================================
     // constructor
     // ======================================================================================
-    public DriveFollowPathOpenLoopV2(String pathName, Runnable loggingMethodDelegate) {
+    public DriveFollowPathOpenLoopV3(String pathName, Runnable loggingMethodDelegate) {
         // Use requires() here to declare subsystem dependencies
         requires(_chassis);
         setInterruptible(true);
@@ -225,8 +226,8 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
             Trajectory rightTrajectory = PathfinderFRC.getTrajectory(rgtFileName);
 
             // Set the two paths in the followers
-            _leftFollower = new DistanceFollower(leftTrajectory);
-            _rightFollower = new DistanceFollower(rightTrajectory);
+            _leftFollower = new BeakDistanceFollower(leftTrajectory);
+            _rightFollower = new BeakDistanceFollower(rightTrajectory);
 
             _loopPeriodInMS = leftTrajectory.get(0).dt;
 
@@ -247,67 +248,31 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
                         ka * seg.acceleration);    // V and A Terms
             */
             double leftDistanceCovered = _chassis.getLeftChassisPositionInInches() - _leftStartingDistance;
-            Segment leftSegment = _leftFollower.getSegment();
-            double leftPosErrInInches = leftSegment.position - leftDistanceCovered;
-            double left_speed = _leftFollower.calculate(leftDistanceCovered);
+            VelocityCmdBE leftMtrCmd = _leftFollower.calculate(leftDistanceCovered);
 
             double rightDistanceCovered = _chassis.getRightChassisPositionInInches() - _rightStartingDistance;
-            Segment rightSegment = _rightFollower.getSegment();
-            double rightPosErrInInches = rightSegment.position - rightDistanceCovered;
-            double right_speed = _rightFollower.calculate(rightDistanceCovered);
+            VelocityCmdBE rgtMtrCmd = _rightFollower.calculate(rightDistanceCovered);
 
             // if we have a non-zero command add the V Intercept (0.025 is the command deadband we use)
-            if(left_speed > 0.01) {
-                left_speed = left_speed + V_INTERCEPT;
-            }
-            else if(left_speed < -0.01) {
-                left_speed = left_speed - V_INTERCEPT;
-            }
-
-            if(right_speed > 0.01) {
-                right_speed = right_speed + V_INTERCEPT;
-            }
-            else if(right_speed < -0.01) {
-                right_speed = right_speed - V_INTERCEPT;
-            }
-
-            //
-            _lastLeftMtrCmd = new VelocityCmdBE(leftPosErrInInches * _leftFollowerGains.KP,
-                                                0,
-                                                (leftPosErrInInches - _lastLeftPosErrInInches) / leftSegment.dt,
-                                                leftSegment.velocity * _leftFollowerGains.KV,
-                                                leftSegment.acceleration * _leftFollowerGains.KA,
-                                                leftPosErrInInches,
-                                                leftSegment);
-
-            _lastRgtMtrCmd = new VelocityCmdBE(rightPosErrInInches * _rightFollowerGains.KP,
-                                                0,
-                                                (rightPosErrInInches - _lastRightPosErrInInches) / rightSegment.dt,
-                                                rightSegment.velocity * _rightFollowerGains.KV,
-                                                rightSegment.acceleration * _rightFollowerGains.KA,
-                                                rightPosErrInInches,
-                                                rightSegment);
-
-            _lastLeftMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
-            _lastRgtMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
+            leftMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
+            rgtMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
 
             // Calculate any turn correction we need based on the current and desired heading
             double actualHeading = _navX.getHeadingInDegrees();         // CW is +
-            double targetHeading = r2d(_leftFollower.getHeading());     // CW is +  
+            double targetHeading = r2d(_leftFollower.getTargetHeadingInRadians());     // CW is +  
             double headingError = Pathfinder.boundHalfDegrees(targetHeading - actualHeading);   // + error means turn RIGHT
-
             VelocityCmdAdjBE turnAdjustment = CalcTurnAdjustment2(headingError, _lastTurnAdjustment);
 
-            // set turn adjustments
-            _lastLeftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
-            _lastRgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
+            // set turn adjustment amount
+            leftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
+            rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
 
             // Send the % output motor cmd to the drivetrain (1 will be+, 1 will be -)
-            _chassis.setOpenLoopVelocityCmd(_lastLeftMtrCmd.get_FinalMtrCmd(), _lastRgtMtrCmd.get_FinalMtrCmd());
+            _chassis.setOpenLoopVelocityCmd(leftMtrCmd.get_FinalMtrCmd(), rgtMtrCmd.get_FinalMtrCmd());
         
             _lastTurnAdjustment = turnAdjustment;
-            _lastLeftPosErrInInches = leftPosErrInInches;
-            _lastRightPosErrInInches = rightPosErrInInches;
+            _lastLeftMtrCmd = leftMtrCmd;
+            _lastRgtMtrCmd = rgtMtrCmd;
 
             // if a logging method delegate was passed in, call it 
             if (_loggingMethodDelegate != null && !isFinished()) {
@@ -336,115 +301,6 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
     //
     //  our expectation is that the turn component is never the driving part of the command, just an incremental adjustment
     //
-    private VelocityCmdAdjBE CalcTurnAdjustment(double currentHeadingErrorInDegrees, VelocityCmdAdjBE previousTurnAdj) {
-
-        // constants
-        final double ERROR_DEADBAND_IN_DEGREES = 0.2;
-        final double TURN_ADJUSTMENT_IN_PERCENT_VBUS = 0.05;
-        final double TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS = 0.25;    // so min 10 cycles to reach adj value
-        
-        // working variables
-        TurnDirection turnDirection;
-        TurnCmdChg turnCmdChg;
-
-        double lastLeftTurnAdj = 0;
-        double lastRgtTurnAdj = 0;
-
-        double leftTurnAdj = 0;
-        double rgtTurnAdj = 0;
-
-        // currentHeadingErrorInDegrees = Target - Actual
-        //  <actual> ------  <target> if currentHeading Error > 0 :: too far left => turn right
-        if (currentHeadingErrorInDegrees > ERROR_DEADBAND_IN_DEGREES) {
-            turnDirection = TurnDirection.RIGHT;
-        }
-        //  <target> ------  <actual> if currentHeading Error < 0 :: too far right => turn left
-        else if (currentHeadingErrorInDegrees < (-1.0 * ERROR_DEADBAND_IN_DEGREES)) {
-            turnDirection = TurnDirection.LEFT;
-        }
-        //  within +/- deadband of target
-        else turnDirection = TurnDirection.NONE;
-
-        // if chgInHeadingError > 0 (ie error is increasing) :: incr adj, else if chgInHeadingError < 0 (ie error is decreasing):: decr adj
-        boolean didErrorSignChg = !((currentHeadingErrorInDegrees < 0) == (previousTurnAdj.HeadingErrorInDegrees < 0)); 
-        boolean isErrorDecreasing = (Math.abs(previousTurnAdj.HeadingErrorInDegrees) > Math.abs(currentHeadingErrorInDegrees));
-        // error is outside deadband
-        if ((turnDirection == TurnDirection.LEFT || turnDirection == TurnDirection.RIGHT) && !isErrorDecreasing) {
-            turnCmdChg = TurnCmdChg.INCREASE;
-            lastLeftTurnAdj = previousTurnAdj.LeftMtrCmdTurnAdj;
-            lastRgtTurnAdj =  previousTurnAdj.RgtMtrCmdTurnAdj;
-        }
-        // we just crossed zero so dial back on turn
-        else if(didErrorSignChg) {
-            turnCmdChg = TurnCmdChg.DECREASE;
-            lastLeftTurnAdj = previousTurnAdj.LeftMtrCmdTurnAdj;
-            lastRgtTurnAdj =  previousTurnAdj.RgtMtrCmdTurnAdj;
-        }
-        // error is inside deadband and going toward 0
-        else if(isErrorDecreasing) {
-            turnCmdChg = TurnCmdChg.DECREASE;
-            lastLeftTurnAdj = previousTurnAdj.LeftMtrCmdTurnAdj;
-            lastRgtTurnAdj =  previousTurnAdj.RgtMtrCmdTurnAdj;
-        }
-        // error is inside deadband
-        else {
-            turnCmdChg = TurnCmdChg.NONE;
-            lastLeftTurnAdj = previousTurnAdj.LeftMtrCmdTurnAdj;
-            lastRgtTurnAdj =  previousTurnAdj.RgtMtrCmdTurnAdj;
-        }
-        
-        // =========================
-        // calc new turn adjustments
-        // =========================
-        if (turnCmdChg == TurnCmdChg.INCREASE) {
-            if (turnDirection == TurnDirection.LEFT) {
-                leftTurnAdj = lastLeftTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-                rgtTurnAdj = lastRgtTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-            }
-            else if (turnDirection == TurnDirection.RIGHT) {
-                leftTurnAdj = lastLeftTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-                rgtTurnAdj = lastRgtTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-            }
-        }
-        else if (turnCmdChg == TurnCmdChg.DECREASE) {
-            if (turnDirection == TurnDirection.LEFT) {
-                leftTurnAdj = lastLeftTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-                rgtTurnAdj = lastRgtTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-            }
-            else if (turnDirection == TurnDirection.RIGHT) {
-                leftTurnAdj = lastLeftTurnAdj - TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-                rgtTurnAdj = lastRgtTurnAdj + TURN_ADJUSTMENT_IN_PERCENT_VBUS;
-            }
-        }
-        else if (turnCmdChg == TurnCmdChg.NONE) {
-            leftTurnAdj = lastLeftTurnAdj;
-            rgtTurnAdj = lastRgtTurnAdj;
-        }
-
-        // =========================
-        // check max adjustment
-        // =========================
-        if (leftTurnAdj > TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS) {
-            leftTurnAdj = TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        }
-        else if (leftTurnAdj < (-1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS)) {
-            leftTurnAdj = -1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        };
-
-        if (rgtTurnAdj > TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS) {
-            rgtTurnAdj = TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        }
-        else if (rgtTurnAdj < (-1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS)) {
-            rgtTurnAdj = -1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        };
-
-        return new VelocityCmdAdjBE(leftTurnAdj, rgtTurnAdj, currentHeadingErrorInDegrees, turnDirection.toString(), turnCmdChg.toString());
-    };
-
     private VelocityCmdAdjBE CalcTurnAdjustment2(double currentHeadingErrorInDegrees, VelocityCmdAdjBE previousTurnAdj) {
 
         // constants
@@ -483,27 +339,6 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
             leftTurnAdj = turnAdj;
             rgtTurnAdj = -turnAdj;
         }
-
-        // =========================
-        // check max adjustment
-        // =========================
-        /*if (leftTurnAdj > TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS) {
-            leftTurnAdj = TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        }
-        else if (leftTurnAdj < (-1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS)) {
-            leftTurnAdj = -1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        };
-
-        if (rgtTurnAdj > TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS) {
-            rgtTurnAdj = TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        }
-        else if (rgtTurnAdj < (-1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS)) {
-            rgtTurnAdj = -1.0 * TURN_MAX_ADJUSTMENT_IN_PERCENT_VBUS;
-            turnCmdChg = TurnCmdChg.INCR_CAP;
-        };*/
 
         return new VelocityCmdAdjBE(leftTurnAdj, rgtTurnAdj, currentHeadingErrorInDegrees, turnDirection.toString(), turnCmdChg.toString());
     };

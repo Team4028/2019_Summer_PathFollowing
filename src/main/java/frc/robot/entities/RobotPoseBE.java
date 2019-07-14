@@ -56,10 +56,10 @@ public class RobotPoseBE {
     {
         return new RobotPoseBE(0.0, 
                                 0.0, 
-                                0 + Chassis.TRACK_WIDTH_INCHES / 2.0,
+                                0 - Chassis.TRACK_WIDTH_INCHES / 2.0,
                                 0.0, 
                                 0.0, 
-                                0 - Chassis.TRACK_WIDTH_INCHES / 2.0, 
+                                0 + Chassis.TRACK_WIDTH_INCHES / 2.0, 
                                 0.0);
     }
 }

@@ -11,33 +11,28 @@ package frc.robot.entities;
  * Add your docs here.
  */
 public class VelocityCmdAdjBE {
-    public final double LeftMtrCmdTurnAdj;
-    public final double RgtMtrCmdTurnAdj;
     public final double HeadingErrorInDegrees;
 
-    public double LeftBaseMtrCmd;
-    public double RgtBaseMtrCmd;
+    //public double LeftPosErrInInches;
+    //public double RgtPosErrInInches;
 
     public final String TurnDirection;
-    public final String TurnChgType;
+    public final String TurnCmdChg;
 
-    public VelocityCmdAdjBE(double leftMtrCmdTurnAdj, double rgtMtrCmdTurnAdj, double headingErrorInDegrees, String turnDirection, String turnChgType) {
+
+    public final double LeftMtrCmdTurnAdj;
+    public final double RgtMtrCmdTurnAdj;
+
+    public VelocityCmdAdjBE(double leftMtrCmdTurnAdj, double rgtMtrCmdTurnAdj, double headingErrorInDegrees, String turnDirection, String turnCmdChg) {
         LeftMtrCmdTurnAdj = leftMtrCmdTurnAdj;
         RgtMtrCmdTurnAdj = rgtMtrCmdTurnAdj;
         HeadingErrorInDegrees = headingErrorInDegrees;
         TurnDirection = turnDirection;
-        TurnChgType = turnChgType;
+        TurnCmdChg = turnCmdChg;
     }
 
     public static VelocityCmdAdjBE init() {
         return new VelocityCmdAdjBE(0.0, 0.0, 0.0, "", "");
     }
 
-    public double LeftFinalMtrCmd() {
-        return LeftBaseMtrCmd + LeftMtrCmdTurnAdj;
-    }
-
-    public double RgtFinalMtrCmd() {
-        return RgtBaseMtrCmd + RgtMtrCmdTurnAdj;
-    }
 }
