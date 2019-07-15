@@ -303,7 +303,7 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
             _lastRgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
 
             // Send the % output motor cmd to the drivetrain (1 will be+, 1 will be -)
-            _chassis.setOpenLoopVBusPercentCmd(_lastLeftMtrCmd.get_FinalMtrCmd(), _lastRgtMtrCmd.get_FinalMtrCmd());
+            _chassis.setOpenLoopVBusPercentCmd(_lastLeftMtrCmd.get_RawFinalMtrCmd(), _lastRgtMtrCmd.get_RawFinalMtrCmd());
         
             _lastTurnAdjustment = turnAdjustment;
             _lastLeftPosErrInInches = leftPosErrInInches;
@@ -561,7 +561,7 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
             logData.AddData("LeftFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("LeftFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_AdjBaseMtrCmd(), 3)));
             logData.AddData("LeftFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_mtrTurnAdjCmd(), 3)));
-            logData.AddData("LeftFollower:FinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_FinalMtrCmd(), 3)));
+            logData.AddData("LeftFollower:FinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawFinalMtrCmd(), 3)));
 
             // log calculated target position relative to start
             logData.AddData("LeftFollower:PoseX", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.LeftXInInches, 1)));
@@ -602,7 +602,7 @@ public class DriveFollowPathOpenLoopV2 extends Command implements IBeakSquadData
             logData.AddData("RgtFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("RgtFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_AdjBaseMtrCmd(), 3)));
             logData.AddData("RgtFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_mtrTurnAdjCmd(), 3)));
-            logData.AddData("RgtFollower:FinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_FinalMtrCmd(), 3)));
+            logData.AddData("RgtFollower:FinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawFinalMtrCmd(), 3)));
 
             // log calculated target position relative to start
             logData.AddData("RgtFollower:PoseX", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.RightXInInches, 1)));

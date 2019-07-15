@@ -104,7 +104,8 @@ public class Robot extends TimedRobot {
     _isNotifierRunning = true;
 
     // setup auton command
-    _autonomousCommand = new DriveFollowPathOpenLoopV3("Straight240in", this::logAllData);
+    //_autonomousCommand = new DriveFollowPathOpenLoopV3("Straight240in", this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoopV3("LeftTurn6ftR", this::logAllData);
     //_autonomousCommand = new DriveFollowPathOpenLoopV2("Straight240in", this::logAllData);
     // schedule the autonomous command
     if (_autonomousCommand != null) {

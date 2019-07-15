@@ -384,6 +384,14 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     else { return 0; }
   }
 
+  private double getLeftBusVoltage() {
+    return _leftMaster.getBusVoltage();
+  }
+
+  private double getRightBusVoltage() {
+    return _rightMaster.getBusVoltage();
+  }
+
   private double getLeftWheelVelocityInRPM() {
     return getLeftEncoderVelocityInNUPer100mS() * (600 / ENCODER_COUNTS_PER_WHEEL_REV);
   }
@@ -474,8 +482,9 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     } 
     logData.AddData("Chassis:LeftActPosInInches", Double.toString(GeneralUtilities.roundDouble(getLeftChassisPositionInInches(), 1)));
     logData.AddData("Chassis:LeftActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getLeftChassisVelocityInInchesPerSec(), 2)));
+    logData.AddData("Chassis:LeftBusVoltage", Double.toString(getLeftBusVoltage()));
+    logData.AddData("Chassis:LeftMotorVoltage", Double.toString(getLeftMotorOutputVoltage()));
     logData.AddData("Chassis:LeftMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_leftMaster.getMotorOutputPercent(), 2)));
-
 
     logData.AddData("Chassis:LeftPoseX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftXInInches, 1)));
     logData.AddData("Chassis:LeftPoseY", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.LeftYInInches, 1)));
@@ -511,6 +520,8 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
 
     logData.AddData("Chassis:RgtActPosInInches", Double.toString(GeneralUtilities.roundDouble(getRightChassisPositionInInches(), 1)));
     logData.AddData("Chassis:RgtActVelInIPS", Double.toString(GeneralUtilities.roundDouble(getRightChassisVelocityInInchesPerSec(), 2)));
+    logData.AddData("Chassis:RgtBusVoltage", Double.toString(getRightBusVoltage()));
+    logData.AddData("Chassis:RgtMotorVoltage", Double.toString(getRightMotorOutputVoltage()));
     logData.AddData("Chassis:RgtMtrOutputPercent", Double.toString(GeneralUtilities.roundDouble(_rightMaster.getMotorOutputPercent(), 2)));
 
     logData.AddData("Chassis:RgtPoseX", Double.toString(GeneralUtilities.roundDouble(currentActualRobotPose.RightXInInches, 1)));

@@ -32,6 +32,7 @@ import jaci.pathfinder.Trajectory;
 
 // Command to Drive following a Path using Open Loop on the TalonSRX and Notifier for the RoboRio loop
 // This version uses a custom implementation of Jaci's DistanceFollower called BeakDistanceFollower
+// added support for scaling output cmds if necessary if they are saturated (ie > 1.0)
 public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadDataPublisher {
 
     // working variables
@@ -102,10 +103,10 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
      * value can also be pretty dangerous if you tune it too high.
      */
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.5, 0.0, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.1, 0.0, 1.0/130.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.5, 0.0, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.1, 0.0, 1.0/130.0, 0.0);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
@@ -262,8 +263,12 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             leftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
             rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
 
+            // enable mtr comd saturation scaling so output is not > 1 so turn adj still works
+            leftMtrCmd.calcMtrScaleFactor(rgtMtrCmd.get_RawFinalMtrCmd());
+            rgtMtrCmd.calcMtrScaleFactor(leftMtrCmd.get_RawFinalMtrCmd());
+
             // Send the % output motor cmd to the drivetrain
-            _chassis.setOpenLoopVBusPercentCmd(leftMtrCmd.get_FinalMtrCmd(), rgtMtrCmd.get_FinalMtrCmd());
+            _chassis.setOpenLoopVBusPercentCmd(leftMtrCmd.get_ScaledFinalMtrCmd(), rgtMtrCmd.get_ScaledFinalMtrCmd());
         
             // save to global variables so they are availabe for logging
             _lastTurnAdjustment = turnAdjustment;
@@ -392,7 +397,8 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             logData.AddData("LeftFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("LeftFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_AdjBaseMtrCmd(), 3)));
             logData.AddData("LeftFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_mtrTurnAdjCmd(), 3)));
-            logData.AddData("LeftFollower:FinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_FinalMtrCmd(), 3)));
+            logData.AddData("LeftFollower:RawFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawFinalMtrCmd(), 3)));
+            logData.AddData("LeftFollower:ScaledFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_ScaledFinalMtrCmd(), 3)));
 
             // log calculated target position relative to start
             logData.AddData("LeftFollower:PoseX", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.LeftXInInches, 1)));
@@ -433,7 +439,8 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             logData.AddData("RgtFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("RgtFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_AdjBaseMtrCmd(), 3)));
             logData.AddData("RgtFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_mtrTurnAdjCmd(), 3)));
-            logData.AddData("RgtFollower:FinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_FinalMtrCmd(), 3)));
+            logData.AddData("RgtFollower:RawFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawFinalMtrCmd(), 3)));
+            logData.AddData("RgtFollower:ScaledFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_ScaledFinalMtrCmd(), 3)));
 
             // log calculated target position relative to start
             logData.AddData("RgtFollower:PoseX", Double.toString(GeneralUtilities.roundDouble(currentTargetRobotPose.RightXInInches, 1)));

@@ -22,6 +22,7 @@ public class VelocityCmdBE {
 
     private double _mtrTurnAdjCmd;
     private double _mtrStictionAdjCmd;  // thisis equiv to VIntercept
+    private double _otherChassisSideRawFinalMtrCmd; // to support saturation scal
 
     public final double PositionErrorInInches;
     public final Segment CurrentSegment;
@@ -83,7 +84,30 @@ public class VelocityCmdBE {
         return adjBaseMtrCmd;
     }
 
-    public double get_FinalMtrCmd() {
+    public double get_RawFinalMtrCmd() {
         return (get_AdjBaseMtrCmd() + get_mtrTurnAdjCmd());
+    }
+
+    public double get_ScaledFinalMtrCmd() {
+        return (get_RawFinalMtrCmd() / get_MtrScaleFactor());
+    }
+
+    //actual calc is defered to get_MtrScaleFactor() method
+    public void calcMtrScaleFactor(double otherChassisSideRawFinalMtrCmd) {
+        _otherChassisSideRawFinalMtrCmd = otherChassisSideRawFinalMtrCmd;
+    }
+
+    public double get_MtrScaleFactor() {
+        double mtrScaleFactor = 1.0;
+
+        // we only need to scale if one of the sides is saturated
+        if(Math.abs(_otherChassisSideRawFinalMtrCmd) > 1.0 || Math.abs(this.get_RawFinalMtrCmd()) > 1.0) {
+            mtrScaleFactor = (Math.abs(_otherChassisSideRawFinalMtrCmd) > Math.abs(this.get_RawFinalMtrCmd()))
+                                ? Math.abs(_otherChassisSideRawFinalMtrCmd)
+                                : Math.abs(this.get_RawFinalMtrCmd());
+            
+        }
+
+        return (mtrScaleFactor);
     }
 }
