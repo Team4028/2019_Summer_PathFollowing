@@ -249,7 +249,7 @@ public class DriveFollowPathOpenLoopFromWaypoints extends Command implements IBe
         double turn = KH * 0.8 * (-1.0 / 80.0) * heading_difference;
 
         // Send the IPS target velocities to the drivetrain
-        _chassis.setOpenLoopVelocityCmd(left_speed - turn, right_speed + turn);
+        _chassis.setOpenLoopVBusPercentCmd(left_speed - turn, right_speed + turn);
     
         // if a logging method delegate was passed in, call it 
         if (_loggingMethodDelegate != null && !isFinished()) {

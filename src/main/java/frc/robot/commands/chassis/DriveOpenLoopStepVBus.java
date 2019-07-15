@@ -102,7 +102,7 @@ public class DriveOpenLoopStepVBus extends Command
       Robot._DataLogger.setMarker(Double.toString(_currentVBusCmd));
     }
 
-    _chassis.setOpenLoopVelocityCmd(_currentVBusCmd, _currentVBusCmd);
+    _chassis.setOpenLoopVBusPercentCmd(_currentVBusCmd, _currentVBusCmd);
   }
 
   // Make this return true when this Command no longer needs to run execute()

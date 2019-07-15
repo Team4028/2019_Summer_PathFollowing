@@ -250,7 +250,7 @@ public class DriveFollowPathOpenLoop extends Command implements IBeakSquadDataPu
         _turnAdjustment = turn;
 
         // Send the % output motor cmd to the drivetrain
-        _chassis.setOpenLoopVelocityCmd(left_speed - turn, right_speed + turn);
+        _chassis.setOpenLoopVBusPercentCmd(left_speed - turn, right_speed + turn);
     
         // if a logging method delegate was passed in, call it 
         if (_loggingMethodDelegate != null && !isFinished()) {

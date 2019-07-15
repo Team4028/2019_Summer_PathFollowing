@@ -255,7 +255,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
 
   public void stop(boolean isSetBrakeMode) 
   {
-    setOpenLoopVelocityCmd(0.0, 0.0);
+    setOpenLoopVBusPercentCmd(0.0, 0.0);
     if(isSetBrakeMode) {
       setBrakeMode(NeutralMode.Brake);
     }
@@ -287,7 +287,7 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     _rightMaster.getSlotConfigs(_rightActiveSlotConfig, slotIdx, CAN_TIMEOUT_MSECS_PERIODIC);
   }
 
-  public void setOpenLoopVelocityCmd(double leftPercentVBusCmd, double rightPercentVBusCmd)
+  public void setOpenLoopVBusPercentCmd(double leftPercentVBusCmd, double rightPercentVBusCmd)
   {
     _leftPercentVBusCmd = leftPercentVBusCmd;
     _rightPercentVBusCmd = rightPercentVBusCmd;

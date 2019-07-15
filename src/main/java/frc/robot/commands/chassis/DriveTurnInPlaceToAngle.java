@@ -54,9 +54,9 @@ public class DriveTurnInPlaceToAngle extends Command {
     double calcSpeed = ramp(Math.abs(currentAngle));
 
     if (_targetSpeed > 0) {
-      _chassis.setOpenLoopVelocityCmd(calcSpeed, -calcSpeed);
+      _chassis.setOpenLoopVBusPercentCmd(calcSpeed, -calcSpeed);
     } else {
-      _chassis.setOpenLoopVelocityCmd(-calcSpeed, calcSpeed);
+      _chassis.setOpenLoopVBusPercentCmd(-calcSpeed, calcSpeed);
     }
 
     System.out.println("Angle: " + currentAngle + "\n" + "Speed: " + calcSpeed);

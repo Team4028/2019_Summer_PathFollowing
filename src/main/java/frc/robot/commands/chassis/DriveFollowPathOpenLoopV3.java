@@ -268,7 +268,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
 
             // Send the % output motor cmd to the drivetrain (1 will be+, 1 will be -)
-            _chassis.setOpenLoopVelocityCmd(leftMtrCmd.get_FinalMtrCmd(), rgtMtrCmd.get_FinalMtrCmd());
+            _chassis.setOpenLoopVBusPercentCmd(leftMtrCmd.get_FinalMtrCmd(), rgtMtrCmd.get_FinalMtrCmd());
         
             _lastTurnAdjustment = turnAdjustment;
             _lastLeftMtrCmd = leftMtrCmd;
