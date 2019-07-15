@@ -29,8 +29,6 @@ import frc.robot.util.PoseEstimation;
 import jaci.pathfinder.Pathfinder;
 import jaci.pathfinder.PathfinderFRC;
 import jaci.pathfinder.Trajectory;
-import jaci.pathfinder.Trajectory.Segment;
-import jaci.pathfinder.followers.DistanceFollower;
 
 // Command to Drive following a Path using Open Loop on the TalonSRX and Notifier for the RoboRio loop
 // This version uses a custom implementation of Jaci's DistanceFollower called BeakDistanceFollower
@@ -76,7 +74,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
         INCREASE,
         INCR_CAP,
         DECREASE,
-        PxErr
+        KHxErr
     }
 
     /*
@@ -247,13 +245,10 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
                         kv * seg.velocity + 
                         ka * seg.acceleration);    // V and A Terms
             */
-            double leftDistanceCovered = _chassis.getLeftChassisPositionInInches() - _leftStartingDistance;
-            VelocityCmdBE leftMtrCmd = _leftFollower.calculate(leftDistanceCovered);
+            VelocityCmdBE leftMtrCmd = _leftFollower.calculate(_chassis.getLeftChassisPositionInInches() - _leftStartingDistance);
+            VelocityCmdBE rgtMtrCmd = _rightFollower.calculate(_chassis.getRightChassisPositionInInches() - _rightStartingDistance);
 
-            double rightDistanceCovered = _chassis.getRightChassisPositionInInches() - _rightStartingDistance;
-            VelocityCmdBE rgtMtrCmd = _rightFollower.calculate(rightDistanceCovered);
-
-            // if we have a non-zero command add the V Intercept (0.025 is the command deadband we use)
+            // if we have a non-zero command add the V Intercept
             leftMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
             rgtMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
 
@@ -263,13 +258,14 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             double headingError = Pathfinder.boundHalfDegrees(targetHeading - actualHeading);   // + error means turn RIGHT
             VelocityCmdAdjBE turnAdjustment = CalcTurnAdjustment2(headingError, _lastTurnAdjustment);
 
-            // set turn adjustment amount
+            // set turn adjustment amount (1 will be +, 1 will be -)
             leftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
             rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
 
-            // Send the % output motor cmd to the drivetrain (1 will be+, 1 will be -)
+            // Send the % output motor cmd to the drivetrain
             _chassis.setOpenLoopVBusPercentCmd(leftMtrCmd.get_FinalMtrCmd(), rgtMtrCmd.get_FinalMtrCmd());
         
+            // save to global variables so they are availabe for logging
             _lastTurnAdjustment = turnAdjustment;
             _lastLeftMtrCmd = leftMtrCmd;
             _lastRgtMtrCmd = rgtMtrCmd;
@@ -309,7 +305,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
 
         // working variables
         TurnDirection turnDirection;
-        TurnCmdChg turnCmdChg = TurnCmdChg.PxErr;
+        TurnCmdChg turnCmdChg = TurnCmdChg.KHxErr;
 
         double leftTurnAdj = 0;
         double rgtTurnAdj = 0;
@@ -449,8 +445,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
     }
 
     @Override
-    public void updateDashboard() 
-    {
+    public void updateDashboard() {
         SmartDashboard.putString("PathFollower:PathName", _pathName);
     }
 }
