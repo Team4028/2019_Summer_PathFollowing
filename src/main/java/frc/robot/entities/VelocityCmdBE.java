@@ -25,6 +25,7 @@ public class VelocityCmdBE {
 
     public final double PositionErrorInInches;
     public final Segment CurrentSegment;
+    private final double MIN_MTR_CMD_DEADBAND = 0.015;
 
     public VelocityCmdBE() {
         this.MtrPCmd = 0;
@@ -69,11 +70,14 @@ public class VelocityCmdBE {
     public double get_AdjBaseMtrCmd() {
         double adjBaseMtrCmd = get_RawBaseMtrCmd();
 
-        if(adjBaseMtrCmd > 0.01) {
-            adjBaseMtrCmd = adjBaseMtrCmd + _mtrStictionAdjCmd;
+        // if mtr cmd > min threshhold && <= kIntercept then force to kIntercept value
+        if ((adjBaseMtrCmd > MIN_MTR_CMD_DEADBAND) && (adjBaseMtrCmd <= _mtrStictionAdjCmd))
+        {
+            adjBaseMtrCmd = _mtrStictionAdjCmd;
         }
-        else if(adjBaseMtrCmd < -0.01) {
-            adjBaseMtrCmd = adjBaseMtrCmd - _mtrStictionAdjCmd;
+        else if ((adjBaseMtrCmd > (-1.0 * MIN_MTR_CMD_DEADBAND)) && (adjBaseMtrCmd <= (-1.0 * _mtrStictionAdjCmd)))
+        {
+            adjBaseMtrCmd = -1.0 * _mtrStictionAdjCmd;
         }
 
         return adjBaseMtrCmd;

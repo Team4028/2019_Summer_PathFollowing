@@ -104,10 +104,10 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
      * value can also be pretty dangerous if you tune it too high.
      */
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.05, 0.02, 1.0/130.0, 0.01);
+                            = new EncoderFollowerPIDGainsBE(0.5, 0.0, 1.0/130.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.05, 0.02, 1.0/130.0, 0.01);
+                            = new EncoderFollowerPIDGainsBE(0.5, 0.0, 1.0/130.0, 0.0);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes

@@ -79,6 +79,7 @@ public class BeakDistanceFollower {
         if (_segmentIdx < _trajectory.length()) {
             Trajectory.Segment currentSegment = _trajectory.get(_segmentIdx);
             double currentPositionError = currentSegment.position - distance_covered;
+            double chgPositionError = currentPositionError - _lastPositionError;
 
             /*
             double calculated_value =
@@ -88,12 +89,17 @@ public class BeakDistanceFollower {
             */
 
             // calc components of velocity command
-            _oP = _kP * currentPositionError;
+            _oP = (currentPositionError > 0) ?
+                    _kP * currentPositionError
+                    : 0;
             _oI = 0;
-            _oD = _kD * ((currentPositionError - _lastPositionError) / currentSegment.dt);
+            _oD = (chgPositionError > 0) ?
+                    _kD * (chgPositionError / currentSegment.dt)
+                    : 0;
             _oV = _kV * currentSegment.velocity;
             _oA = ((currentSegment.acceleration - _lastSegmentAccel) > MIN_ACCEL_CHG) ?
-                     _kA * currentSegment.acceleration : 0;
+                     _kA * currentSegment.acceleration 
+                     : 0;
             //_oA = _kA * currentSegment.acceleration;
 
             /*
