@@ -89,9 +89,10 @@ public class BeakDistanceFollower {
             */
 
             // calc components of velocity command
-            _oP = (currentPositionError > 0) ?
-                    _kP * currentPositionError
-                    : 0;
+            //_oP = (currentPositionError > 0) ?
+            //        _kP * currentPositionError
+            //        : 0;
+            _oP = _kP * currentPositionError;
             _oI = 0;
             _oD = (chgPositionError > 0) ?
                     _kD * (chgPositionError / currentSegment.dt)

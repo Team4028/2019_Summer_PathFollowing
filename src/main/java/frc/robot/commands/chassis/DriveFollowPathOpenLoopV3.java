@@ -103,19 +103,19 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
      * value can also be pretty dangerous if you tune it too high.
      */
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.1, 0.0, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.2, 0.05, 1.0/130.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.1, 0.0, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.2, 0.05, 1.0/130.0, 0.0);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
     // open loop [-1 - 1], so this compensates for closed loop)
-    private static final double KH = 0.15; 
+    private static final double KH = 0.1; 
 
     //  robot drives have a voltage "dead-zone" around zero within which the torque generated 
     //  by the motors is insufficient to overcome frictional losses in the drive. 
-    private static final double V_INTERCEPT = 0.08;
+    private static final double V_INTERCEPT = 0.15; // 0.08;
     // ======================================================================================
     // constructor
     // ======================================================================================

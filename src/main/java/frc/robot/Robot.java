@@ -215,7 +215,7 @@ public class Robot extends TimedRobot {
     if(!this.isDisabled() 
           && (_DataLogger != null) 
           && !_isNotifierRunning 
-          && _autonomousCommand != null) {
+          && _autonomousCommand == null) {
       this.logAllData();
     }
   }

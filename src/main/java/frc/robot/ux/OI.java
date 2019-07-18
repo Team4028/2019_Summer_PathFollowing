@@ -3,6 +3,7 @@ package frc.robot.ux;
 import frc.robot.RobotMap;
 import frc.robot.commands.chassis.DriveClosedLoopFixedVelocity;
 import frc.robot.commands.chassis.DriveClosedLoopStepVelocity;
+import frc.robot.commands.chassis.DriveOpenLoopFixedVBus;
 import frc.robot.commands.chassis.DriveOpenLoopStepVBus;
 import frc.robot.commands.chassis.StopChassis;
 import frc.robot.commands.chassis.ZeroSensors;
@@ -37,7 +38,8 @@ public class OI {
 		// Driver Controller -> Command Mapping
 		//															run time = 10 sec
 		//															target vel = 12 in/sec
-		_driverController.a.whenPressed(new DriveClosedLoopFixedVelocity("3_20", Chassis.PID_PROFILE_SLOT_IDX_LS, 3, 20.0, 20.0));
+		//_driverController.a.whenPressed(new DriveClosedLoopFixedVelocity("3_20", Chassis.PID_PROFILE_SLOT_IDX_LS, 3, 20.0, 20.0));
+		_driverController.a.whenPressed(new DriveOpenLoopFixedVBus("VBUS_1.0", 3, 1.0, 1.0));
 		_driverController.b.whenPressed(new StopChassis());
 		_driverController.x.whenPressed(new ZeroSensors());
 		_driverController.y.whenPressed(new DriveOpenLoopStepVBus(25, 0.025));
