@@ -400,11 +400,11 @@ public class Chassis extends Subsystem implements IBeakSquadDataPublisher {
     return getRightEncoderVelocityInNUPer100mS() * (600 / ENCODER_COUNTS_PER_WHEEL_REV);
   }
 
-  private double getLeftChassisVelocityInInchesPerSec() {
+  public double getLeftChassisVelocityInInchesPerSec() {
     return convertRPMToInchesPerSecond(getLeftWheelVelocityInRPM());
   }
 
-  private double getRightChassisVelocityInInchesPerSec() {
+  public double getRightChassisVelocityInInchesPerSec() {
     return convertRPMToInchesPerSecond(getRightWheelVelocityInRPM());
   }
 

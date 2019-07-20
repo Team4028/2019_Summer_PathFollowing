@@ -102,20 +102,18 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
      * your robot and need more power in the acceleration phase(s) of the loop. This
      * value can also be pretty dangerous if you tune it too high.
      */
+    //                                                      kPPos, kPVel, kIPos, kFFVel, kFFAccel
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.2, 0.05, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 0,0, 1.0/105.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.2, 0.05, 1.0/130.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 0,0, 1.0/105.0, 0.0);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
     // open loop [-1 - 1], so this compensates for closed loop)
-    private static final double KH = 0.1; 
+    private static final double KHErr = 0.0; //0.1; 
 
-    //  robot drives have a voltage "dead-zone" around zero within which the torque generated 
-    //  by the motors is insufficient to overcome frictional losses in the drive. 
-    private static final double V_INTERCEPT = 0.15; // 0.08;
     // ======================================================================================
     // constructor
     // ======================================================================================
@@ -127,17 +125,17 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
         _pathName = pathName;
         importPath(pathName);
 
-        _leftFollower.configurePIDVA(_leftFollowerGains.KP, 
-                                        _leftFollowerGains.KI, 
-                                        _leftFollowerGains.KD,
-                                        _leftFollowerGains.KV, 
-                                        _leftFollowerGains.KA);
+        _leftFollower.configurePIDVA(_leftFollowerGains.kPPosErr, 
+                                        _leftFollowerGains.kPVelErr, 
+                                        _leftFollowerGains.kIPosErr, 
+                                        _leftFollowerGains.kFFVelCmd,
+                                        _leftFollowerGains.kFFAccelCmd);
 
-        _rightFollower.configurePIDVA(_rightFollowerGains.KP, 
-                                        _rightFollowerGains.KI, 
-                                        _rightFollowerGains.KD,
-                                        _rightFollowerGains.KV, 
-                                        _rightFollowerGains.KA);
+        _rightFollower.configurePIDVA(_rightFollowerGains.kPPosErr, 
+                                        _rightFollowerGains.kPVelErr, 
+                                        _rightFollowerGains.kIPosErr, 
+                                        _rightFollowerGains.kFFVelCmd,
+                                        _rightFollowerGains.kFFAccelCmd);
 
         // save a local reference to the delegate to the logging method
         _loggingMethodDelegate = loggingMethodDelegate;
@@ -181,8 +179,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
         _notifier.close();  // notifier was still firing events until i added this call
         _chassis.stop(true);
 
-        if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled())
-        {
+        if(Robot._DataLogger != null && Robot._DataLogger.get_isLoggingEnabled()) {
           Robot._DataLogger.clearMarker();
         }
 
@@ -246,12 +243,10 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
                         kv * seg.velocity + 
                         ka * seg.acceleration);    // V and A Terms
             */
-            VelocityCmdBE leftMtrCmd = _leftFollower.calculate(_chassis.getLeftChassisPositionInInches() - _leftStartingDistance);
-            VelocityCmdBE rgtMtrCmd = _rightFollower.calculate(_chassis.getRightChassisPositionInInches() - _rightStartingDistance);
-
-            // if we have a non-zero command add the V Intercept
-            leftMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
-            rgtMtrCmd.set_mtrStictionAdjCmd(V_INTERCEPT);
+            VelocityCmdBE leftMtrCmd = _leftFollower.calculate(_chassis.getLeftChassisPositionInInches() - _leftStartingDistance,
+                                                                _chassis.getLeftChassisVelocityInInchesPerSec());
+            VelocityCmdBE rgtMtrCmd = _rightFollower.calculate(_chassis.getRightChassisPositionInInches() - _rightStartingDistance,
+                                                                _chassis.getRightChassisVelocityInInchesPerSec());
 
             // Calculate any turn correction we need based on the current and desired heading
             double actualHeading = _navX.getHeadingInDegrees();         // CW is +
@@ -260,8 +255,8 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             VelocityCmdAdjBE turnAdjustment = CalcTurnAdjustment2(headingError, _lastTurnAdjustment);
 
             // set turn adjustment amount (1 will be +, 1 will be -)
-            leftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
-            rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
+            //leftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
+            //rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
 
             // enable mtr comd saturation scaling so output is not > 1 so turn adj still works
             leftMtrCmd.calcMtrScaleFactor(rgtMtrCmd.get_RawFinalMtrCmd());
@@ -327,7 +322,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
         //  within +/- deadband of target
         else turnDirection = TurnDirection.NONE;
  
-        double turnAdj =  Math.abs(KH * currentHeadingErrorInDegrees);
+        double turnAdj =  Math.abs(KHErr * currentHeadingErrorInDegrees);
 
         // =========================
         // calc new turn adjustments
@@ -366,20 +361,18 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
 
             // use stringbuilder instead of concat for perf
             _sb.setLength(0);
-            _sb.append("kP: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KP, 3)));
-            _sb.append(" |kI: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KI, 3)));
-            _sb.append(" |kD: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KD, 4)));
-            _sb.append(" |kV: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KV, 5)));
-            _sb.append(" |kA: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.KA, 3)));
-            _sb.append(" |kH: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(KH, 3)));
-            _sb.append(" |VI: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(V_INTERCEPT, 3)));
+            _sb.append("kPPosErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.kPPosErr, 3)));
+            _sb.append(" |kPVelErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.kPVelErr, 3)));
+            _sb.append(" |kIPosErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.kIPosErr, 4)));
+            _sb.append(" |kFFVelCmd: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.kFFVelCmd, 5)));
+            _sb.append(" |kFFAccelCmd: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_leftFollowerGains.kFFAccelCmd, 3)));
+            _sb.append(" |KHErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(KHErr, 3)));
             logData.AddData("LeftFollower:Gains", _sb.toString());
     
             // log segment target data
@@ -389,14 +382,16 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             logData.AddData("LeftFollower:Heading", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.CurrentSegment.heading, 3)));
 
             logData.AddData("LeftFollower:PosErrInInches", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.PositionErrorInInches, 2)));
+            logData.AddData("LeftFollower:VelErrInIPS", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.VelocityErrorInIPS, 2)));
 
-            logData.AddData("LeftFollower:PCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrPCmd, 3)));
-            logData.AddData("LeftFollower:DCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrDCmd, 3)));
-            logData.AddData("LeftFollower:VCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrVCmd, 3)));
-            logData.AddData("LeftFollower:ACmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrACmd, 3)));
+            logData.AddData("LeftFollower:PPosCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrPPosCmd, 3)));
+            logData.AddData("LeftFollower:PVelCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrPVelCmd, 3)));
+            logData.AddData("LeftFollower:IPosCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrIPosCmd, 3)));
+            logData.AddData("LeftFollower:FFVelCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrFFVelCmd, 3)));
+            logData.AddData("LeftFollower:FFAccelCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrFFAccelCmd, 3)));
             logData.AddData("LeftFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("LeftFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_AdjBaseMtrCmd(), 3)));
-            logData.AddData("LeftFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_mtrTurnAdjCmd(), 3)));
+            //logData.AddData("LeftFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_mtrTurnAdjCmd(), 3)));
             logData.AddData("LeftFollower:RawFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawFinalMtrCmd(), 3)));
             logData.AddData("LeftFollower:ScaledFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_ScaledFinalMtrCmd(), 3)));
 
@@ -408,20 +403,18 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             // *********** RIGHT SIDE **********
             // *********************************
             _sb.setLength(0);
-            _sb.append("kP: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KP, 3)));
-            _sb.append(" |kI: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KI, 3)));
-            _sb.append(" |kD: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KD, 4)));
-            _sb.append(" |kV: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KV, 5)));
-            _sb.append(" |kA: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.KA, 3)));
-            _sb.append(" |kH: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(KH, 3)));
-            _sb.append(" |VI: ");
-            _sb.append(Double.toString(GeneralUtilities.roundDouble(V_INTERCEPT, 3)));
+            _sb.append("kPPosErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.kPPosErr, 3)));
+            _sb.append(" |kPVelErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.kPVelErr, 3)));
+            _sb.append(" |kIPosErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.kIPosErr, 4)));
+            _sb.append(" |kFFVelCmd: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.kFFVelCmd, 5)));
+            _sb.append(" |kFFAccelCmd: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(_rightFollowerGains.kFFAccelCmd, 3)));
+            _sb.append(" |KHErr: ");
+            _sb.append(Double.toString(GeneralUtilities.roundDouble(KHErr, 3)));
             logData.AddData("RgtFollower:Gains", _sb.toString());
           
             // log segment target data
@@ -431,14 +424,16 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             logData.AddData("RgtFollower:Heading", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.CurrentSegment.heading, 3)));
 
             logData.AddData("RgtFollower:PosErrInInches", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.PositionErrorInInches, 2)));
+            logData.AddData("RgtFollower:VelErrInIPS", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.VelocityErrorInIPS, 2)));
 
-            logData.AddData("RgtFollower:PCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrPCmd, 3)));
-            logData.AddData("RgtFollower:DCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrDCmd, 3)));
-            logData.AddData("RgtFollower:VCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrVCmd, 3)));
-            logData.AddData("RgtFollower:ACmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrACmd, 3)));
+            logData.AddData("RgtFollower:PPosCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrPPosCmd, 3)));
+            logData.AddData("RgtFollower:PVelCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrPVelCmd, 3)));
+            logData.AddData("RgtFollower:IPosCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrIPosCmd, 3)));
+            logData.AddData("RgtFollower:FFVelCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrFFVelCmd, 3)));
+            logData.AddData("RgtFollower:FFAccelCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrFFAccelCmd, 3)));
             logData.AddData("RgtFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("RgtFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_AdjBaseMtrCmd(), 3)));
-            logData.AddData("RgtFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_mtrTurnAdjCmd(), 3)));
+            //logData.AddData("RgtFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_mtrTurnAdjCmd(), 3)));
             logData.AddData("RgtFollower:RawFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawFinalMtrCmd(), 3)));
             logData.AddData("RgtFollower:ScaledFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_ScaledFinalMtrCmd(), 3)));
 

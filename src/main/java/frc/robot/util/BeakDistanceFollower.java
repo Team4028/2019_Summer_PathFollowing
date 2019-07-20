@@ -15,13 +15,11 @@ import jaci.pathfinder.Trajectory;
  */
 public class BeakDistanceFollower {
 
-    double _kP, _kI, _kD, _kV, _kA;
+    double _kPPosErr, _kPVelErr, _kIPosErr, _kFFVelCmd, _kFFAccelCmd;
 
-    double _oP, _oI, _oD, _oV, _oA;
+    double _oPPosErrCmd, _oPVelErrCmd, _oIPosErrCmd, _oFFVelCmd, _oFFAccelCmd;
 
-    double _lastPositionError, _targetHeadingInRadians, _lastSegmentAccel, _calculatedMtrCmd;
-
-    private final double MIN_ACCEL_CHG = 30.0;
+    double _lastPositionError, _targetHeadingInRadians, _lastSegmentAccel;
 
     int _segmentIdx;
     Trajectory _trajectory;
@@ -44,20 +42,18 @@ public class BeakDistanceFollower {
 
     /**
      * Configure the PID/VA Variables for the Follower
-     * @param kp The proportional term. This is usually quite high (0.8 - 1.0 are common values)
-     * @param ki The integral term. Currently unused.
-     * @param kd The derivative term. Adjust this if you are unhappy with the tracking of the follower. 0.0 is the default
-     * @param kv The velocity ratio. This should be 1 over your maximum velocity @ 100% throttle.
-     *           This converts m/s given by the algorithm to a scale of -1..1 to be used by your
-     *           motor controllers
-     * @param ka The acceleration term. Adjust this if you want to reach higher or lower speeds faster. 0.0 is the default
+     * @param kp    The proportional gain on position error.
+     * @param ki    The integral gain on position error.
+     * @param kv    The proportional gain on velocity error (or derivative gain on position error).
+     * @param kffv  The feedforward gain on velocity. Should be 1.0 if the units of the profile match the units of the output.
+     * @param kffa  The feedforward gain on acceleration.
      */
-    public void configurePIDVA(double kp, double ki, double kd, double kv, double ka) {
-        this._kP = kp; 
-        this._kI = ki; 
-        this._kD = kd;
-        this._kV = kv; 
-        this._kA = ka;
+    public void configurePIDVA(double kPPosErr, double kPVelErr, double kIPosErr, double kFFVelCmd, double kFFAccelCmd) {
+        this._kPPosErr = kPPosErr; 
+        this._kPVelErr = kPVelErr; 
+        this._kIPosErr = kIPosErr;
+        this._kFFVelCmd = kFFVelCmd; 
+        this._kFFAccelCmd = kFFAccelCmd;
     }
 
     /**
@@ -72,52 +68,31 @@ public class BeakDistanceFollower {
      * Calculate the desired output for the motors, based on the distance the robot has covered.
      * This does not account for heading of the robot. To account for heading, add some extra terms in your control
      * loop for realignment based on gyroscope input and the desired heading given by this object.
-     * @param distance_covered  The distance covered in meters
+     * @param distanceCovered  The distance covered in meters
      * @return                  The desired output for your motor controller
      */
-    public VelocityCmdBE calculate(double distance_covered) {
+    public VelocityCmdBE calculate(double distanceCovered, double currentVelocity) {
         if (_segmentIdx < _trajectory.length()) {
+            // get current segment
             Trajectory.Segment currentSegment = _trajectory.get(_segmentIdx);
-            double currentPositionError = currentSegment.position - distance_covered;
-            double chgPositionError = currentPositionError - _lastPositionError;
 
-            /*
-            double calculated_value =
-                    kp * error +                                    // Proportional
-                    kd * ((error - last_error) / seg.dt) +          // Derivative
-                    (kv * seg.velocity + ka * seg.acceleration);    // V and A Terms
-            */
+            // calc erros
+            double currentPositionError = currentSegment.position - distanceCovered;
+            double currentVelocityError = currentSegment.velocity - currentVelocity;
 
             // calc components of velocity command
-            //_oP = (currentPositionError > 0) ?
-            //        _kP * currentPositionError
-            //        : 0;
-            _oP = _kP * currentPositionError;
-            _oI = 0;
-            _oD = (chgPositionError > 0) ?
-                    _kD * (chgPositionError / currentSegment.dt)
-                    : 0;
-            _oV = _kV * currentSegment.velocity;
-            _oA = ((currentSegment.acceleration - _lastSegmentAccel) > MIN_ACCEL_CHG) ?
-                     _kA * currentSegment.acceleration 
-                     : 0;
-            //_oA = _kA * currentSegment.acceleration;
+            _oPPosErrCmd = _kPPosErr * currentPositionError;
+            _oPVelErrCmd = _kPVelErr * currentVelocityError;
+            _oIPosErrCmd = 0;
 
-            /*
-            double calculated_value =
-                    _kP * currentPositionError +                                    // Proportional
-                    _kD * ((currentPositionError - _lastPositionError) / seg.dt) +          // Derivative
-                    (_kV * seg.velocity + _kA * seg.acceleration);    // V and A Terms
-            */
-            _calculatedMtrCmd = (_oP + _oD + _oV + _oA);
+            _oFFVelCmd = _kFFVelCmd * currentSegment.velocity;
+            _oFFAccelCmd = _kFFAccelCmd * currentSegment.acceleration;
 
-            _lastPositionError = currentPositionError;
-            _lastSegmentAccel = currentSegment.acceleration;
             _targetHeadingInRadians = currentSegment.heading;
 
             _segmentIdx++;
 
-            return new VelocityCmdBE(_oP, _oI, _oD, _oV, _oA, currentPositionError, currentSegment);
+            return new VelocityCmdBE(_oPPosErrCmd, _oPVelErrCmd, _oIPosErrCmd, _oFFVelCmd, _oFFAccelCmd, currentPositionError, currentVelocityError, currentSegment);
         } 
         else {
             return new VelocityCmdBE();
@@ -131,9 +106,9 @@ public class BeakDistanceFollower {
         return _targetHeadingInRadians;
     }
 
-    public double getLastPositionError() {
-        return _lastPositionError;
-    }
+    //public double getLastPositionError() {
+    //    return _lastPositionError;
+    //}
 
     /**
      * @return the current segment being operated on

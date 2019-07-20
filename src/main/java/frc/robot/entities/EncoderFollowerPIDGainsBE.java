@@ -12,18 +12,26 @@ package frc.robot.entities;
  * KI commented out since I Gain is not supported by Jaci's PathFollower
  */
 public class EncoderFollowerPIDGainsBE {
-    public final double KP;
-	public final double KI;
-	public final double KD;
-	public final double KV;
-	public final double KA;
+	public final double kPPosErr;
+	public final double kPVelErr;
+	public final double kIPosErr;
+	public final double kDPosErr;
+	public final double kFFVelCmd;
+	public final double kFFAccelCmd;
 
 	// constructor(s)
-    public EncoderFollowerPIDGainsBE(double _kP, double _kD, double _kV, double _kA) {
-		KP = _kP;
-		KI = 0;
-		KD = _kD;
-		KV = _kV;
-		KA = _kA;
+	// @param _kPPosErr		The proportional gain on position error.
+	// @param _kPVelErr		The integral gain on velocity error.
+	// @param _kIPosErr		The integral gain on position error.
+	// @param _kDPosErr		The derivative gain on position error.
+	// @param _kFFVelCmd	The feedforward gain on velocity.
+	// @param _kFFAccelCmd	The feedforward gain on acceleration.
+    public EncoderFollowerPIDGainsBE(double _kPPosErr, double _kPVelErr, double _kIPosErr, double _kDPosErr, double _kFFVelCmd, double _kFFAccelCmd) {
+		kPPosErr = _kPPosErr;
+		kPVelErr = _kPVelErr;
+		kIPosErr = 0;
+		kDPosErr = _kDPosErr;
+		kFFVelCmd = _kFFVelCmd;
+		kFFAccelCmd = _kFFAccelCmd;
 	}
 }

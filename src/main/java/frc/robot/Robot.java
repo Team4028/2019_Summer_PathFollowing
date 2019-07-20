@@ -13,9 +13,6 @@ import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import frc.robot.commands.chassis.DriveFollowPathClosedLoop;
-import frc.robot.commands.chassis.DriveFollowPathOpenLoop;
-import frc.robot.commands.chassis.DriveFollowPathOpenLoopV2;
 import frc.robot.commands.chassis.DriveFollowPathOpenLoopV3;
 import frc.robot.commands.chassis.DriveWithControllers;
 import frc.robot.interfaces.IBeakSquadDataPublisher;
@@ -104,8 +101,8 @@ public class Robot extends TimedRobot {
     _isNotifierRunning = true;
 
     // setup auton command
-    //_autonomousCommand = new DriveFollowPathOpenLoopV3("Straight240in", this::logAllData);
-    _autonomousCommand = new DriveFollowPathOpenLoopV3("LeftTurn6ftR", this::logAllData);
+    _autonomousCommand = new DriveFollowPathOpenLoopV3("Straight240in", this::logAllData);
+    //_autonomousCommand = new DriveFollowPathOpenLoopV3("LeftTurn6ftR", this::logAllData);
     //_autonomousCommand = new DriveFollowPathOpenLoopV2("Straight240in", this::logAllData);
     // schedule the autonomous command
     if (_autonomousCommand != null) {

@@ -14,56 +14,54 @@ import jaci.pathfinder.Trajectory.Segment;
  */
 public class VelocityCmdBE {
 
-    public final double MtrPCmd;
-    public final double MtrICmd;
-    public final double MtrDCmd;
-    public final double MtrVCmd;
-    public final double MtrACmd;
+    public final double MtrPPosCmd;
+    public final double MtrIPosCmd;
+    public final double MtrPVelCmd;
+    public final double MtrFFVelCmd;
+    public final double MtrFFAccelCmd;
 
-    private double _mtrTurnAdjCmd;
-    private double _mtrStictionAdjCmd;  // thisis equiv to VIntercept
+    //private double _mtrTurnAdjCmd;
     private double _otherChassisSideRawFinalMtrCmd; // to support saturation scal
 
     public final double PositionErrorInInches;
+    public final double VelocityErrorInIPS;
     public final Segment CurrentSegment;
     private final double MIN_MTR_CMD_DEADBAND = 0.015;
 
     public VelocityCmdBE() {
-        this.MtrPCmd = 0;
-        this.MtrICmd = 0;
-        this.MtrDCmd = 0;
-        this.MtrVCmd = 0;
-        this.MtrACmd = 0;  
+        this.MtrPPosCmd = 0;
+        this.MtrIPosCmd = 0;
+        this.MtrPVelCmd = 0;
+        this.MtrFFVelCmd = 0;
+        this.MtrFFAccelCmd = 0;  
 
         this.PositionErrorInInches = 0;
+        this.VelocityErrorInIPS = 0;
         this.CurrentSegment = null;
     }
 
-    public VelocityCmdBE(double mtrPCmd, double mtrICmd, double mtrDCmd, double mtrVCmd, double mtrACmd, double positionErrorInInches, Segment currentSegment) {
-        this.MtrPCmd = mtrPCmd;
-        this.MtrICmd = mtrICmd;
-        this.MtrDCmd = mtrDCmd;
-        this.MtrVCmd = mtrVCmd;
-        this.MtrACmd = mtrACmd;
+    public VelocityCmdBE(double mtrPPosCmd, double mtrPVelCmd, double mtrIPosCmd, double mtrFFVelCmd, double mtrFFAccelCmd, double positionErrorInInches, double velocityErrorInIPS, Segment currentSegment) {
+        this.MtrPPosCmd = mtrPPosCmd;
+        this.MtrPVelCmd = mtrPVelCmd;
+        this.MtrIPosCmd = mtrIPosCmd;
+        this.MtrFFVelCmd = mtrFFVelCmd;
+        this.MtrFFAccelCmd = mtrFFAccelCmd;
 
         this.PositionErrorInInches = positionErrorInInches;
+        this.VelocityErrorInIPS = velocityErrorInIPS;
         this.CurrentSegment = currentSegment;
     }
 
-    public void set_mtrStictionAdjCmd(double mtrStictionAdjCmd) {
-        _mtrStictionAdjCmd = mtrStictionAdjCmd;
-    }
+    //public void set_mtrTurnAdjCmd(double mtrTurnAdjCmd) {
+    //    _mtrTurnAdjCmd = mtrTurnAdjCmd;
+    //}
 
-    public void set_mtrTurnAdjCmd(double mtrTurnAdjCmd) {
-        _mtrTurnAdjCmd = mtrTurnAdjCmd;
-    }
-
-    public double get_mtrTurnAdjCmd() {
-        return _mtrTurnAdjCmd;
-    }
+    //public double get_mtrTurnAdjCmd() {
+    //    return _mtrTurnAdjCmd;
+    //}
 
     public double get_RawBaseMtrCmd() {
-        double baseMtrCmd = MtrPCmd + MtrICmd + MtrDCmd + MtrVCmd + MtrACmd;
+        double baseMtrCmd = MtrPPosCmd + MtrIPosCmd + MtrPVelCmd + MtrFFVelCmd + MtrFFAccelCmd;
 
         return baseMtrCmd;
     }
@@ -71,21 +69,16 @@ public class VelocityCmdBE {
     public double get_AdjBaseMtrCmd() {
         double adjBaseMtrCmd = get_RawBaseMtrCmd();
 
-        // if mtr cmd > min threshhold && <= kIntercept then force to kIntercept value
-        if ((adjBaseMtrCmd > MIN_MTR_CMD_DEADBAND) && (adjBaseMtrCmd <= _mtrStictionAdjCmd))
+        if(adjBaseMtrCmd > .01 && adjBaseMtrCmd< .18)
         {
-            adjBaseMtrCmd = _mtrStictionAdjCmd;
+            adjBaseMtrCmd = .18;
         }
-        else if ((adjBaseMtrCmd > (-1.0 * MIN_MTR_CMD_DEADBAND)) && (adjBaseMtrCmd <= (-1.0 * _mtrStictionAdjCmd)))
-        {
-            adjBaseMtrCmd = -1.0 * _mtrStictionAdjCmd;
-        }
-
+        // TODO: decide if we need this
         return adjBaseMtrCmd;
     }
 
     public double get_RawFinalMtrCmd() {
-        return (get_AdjBaseMtrCmd() + get_mtrTurnAdjCmd());
+        return (get_AdjBaseMtrCmd()); // + get_mtrTurnAdjCmd());
     }
 
     public double get_ScaledFinalMtrCmd() {
