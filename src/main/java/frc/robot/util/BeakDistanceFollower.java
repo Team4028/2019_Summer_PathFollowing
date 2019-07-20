@@ -7,6 +7,7 @@
 
 package frc.robot.util;
 
+import frc.robot.entities.EncoderFollowerPIDGainsBE;
 import frc.robot.entities.VelocityCmdBE;
 import jaci.pathfinder.Trajectory;
 
@@ -15,14 +16,17 @@ import jaci.pathfinder.Trajectory;
  */
 public class BeakDistanceFollower {
 
-    double _kPPosErr, _kPVelErr, _kIPosErr, _kFFVelCmd, _kFFAccelCmd;
+    double _kPPosErr, _kPVelErr, _kIPosErr, _kFFVelCmd, _kFFAccelCmd, _kInterceptCmd;
 
-    double _oPPosErrCmd, _oPVelErrCmd, _oIPosErrCmd, _oFFVelCmd, _oFFAccelCmd;
+    //double _oPPosErrCmd, _oPVelErrCmd, _oIPosErrCmd, _oFFVelCmd, _oFFAccelCmd, _oInterceptCmd;
 
     double _lastPositionError, _targetHeadingInRadians, _lastSegmentAccel;
 
     int _segmentIdx;
     Trajectory _trajectory;
+
+    private static final double MIN_MOTOR_CMD = 0.01;
+    private static final double MIN_DECEL_VEL_IN_IPS = 5.0;    // point that KI & KPV start oscillating
 
     // constructors
     public BeakDistanceFollower(Trajectory traj) {
@@ -48,12 +52,22 @@ public class BeakDistanceFollower {
      * @param kffv  The feedforward gain on velocity. Should be 1.0 if the units of the profile match the units of the output.
      * @param kffa  The feedforward gain on acceleration.
      */
-    public void configurePIDVA(double kPPosErr, double kPVelErr, double kIPosErr, double kFFVelCmd, double kFFAccelCmd) {
+    public void configurePIDVA(double kPPosErr, double kPVelErr, double kIPosErr, double kFFVelCmd, double kFFAccelCmd, double kInterceptCmd) {
         this._kPPosErr = kPPosErr; 
         this._kPVelErr = kPVelErr; 
         this._kIPosErr = kIPosErr;
         this._kFFVelCmd = kFFVelCmd; 
         this._kFFAccelCmd = kFFAccelCmd;
+        this._kInterceptCmd = kInterceptCmd;
+    }
+
+    public void configurePIDVA(EncoderFollowerPIDGainsBE gains, double kInterceptCmd) {
+        this._kPPosErr = gains.kPPosErr; 
+        this._kPVelErr = gains.kPVelErr; 
+        this._kIPosErr = gains.kIPosErr;
+        this._kFFVelCmd = gains.kFFVelCmd; 
+        this._kFFAccelCmd = gains.kFFAccelCmd;
+        this._kInterceptCmd = kInterceptCmd;
     }
 
     /**
@@ -81,18 +95,34 @@ public class BeakDistanceFollower {
             double currentVelocityError = currentSegment.velocity - currentVelocity;
 
             // calc components of velocity command
-            _oPPosErrCmd = _kPPosErr * currentPositionError;
-            _oPVelErrCmd = _kPVelErr * currentVelocityError;
-            _oIPosErrCmd = 0;
+            double oPPosErrCmd = _kPPosErr * currentPositionError;
+            double oPVelErrCmd = (((currentSegment.acceleration < 0) 
+                                    && (currentVelocityError < 0.0))    // we are decel + too fast
+                                   || ((currentSegment.acceleration > 0) 
+                                    && (currentVelocityError > 0.0)))   // we are accel + too slow
+                                    ? _kPVelErr * currentVelocityError 
+                                    : 0;
+            double oIPosErrCmd = 0;
 
-            _oFFVelCmd = _kFFVelCmd * currentSegment.velocity;
-            _oFFAccelCmd = _kFFAccelCmd * currentSegment.acceleration;
+            double oFFVelCmd = _kFFVelCmd * currentSegment.velocity;
+            double oFFAccelCmd = _kFFAccelCmd * currentSegment.acceleration;
+
+            double rawCmd = (oPPosErrCmd
+                                + oPVelErrCmd
+                                + oIPosErrCmd
+                                + oFFVelCmd
+                                + oFFAccelCmd);
+
+            double oInterceptCmd = 0;
+            if (((currentSegment.acceleration >= 0) && (rawCmd > MIN_MOTOR_CMD))
+                || ((currentSegment.acceleration < 0) && (currentSegment.velocity > MIN_DECEL_VEL_IN_IPS))) {
+                oInterceptCmd = _kInterceptCmd;
+            }
 
             _targetHeadingInRadians = currentSegment.heading;
-
             _segmentIdx++;
 
-            return new VelocityCmdBE(_oPPosErrCmd, _oPVelErrCmd, _oIPosErrCmd, _oFFVelCmd, _oFFAccelCmd, currentPositionError, currentVelocityError, currentSegment);
+            return new VelocityCmdBE(oPPosErrCmd, oPVelErrCmd, oIPosErrCmd, oFFVelCmd, oFFAccelCmd, oInterceptCmd, currentPositionError, currentVelocityError, currentSegment);
         } 
         else {
             return new VelocityCmdBE();
@@ -105,10 +135,6 @@ public class BeakDistanceFollower {
     public double getTargetHeadingInRadians() {
         return _targetHeadingInRadians;
     }
-
-    //public double getLastPositionError() {
-    //    return _lastPositionError;
-    //}
 
     /**
      * @return the current segment being operated on
