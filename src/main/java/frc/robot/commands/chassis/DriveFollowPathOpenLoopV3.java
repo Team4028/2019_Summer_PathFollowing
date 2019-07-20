@@ -104,10 +104,10 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
      */
     //                                                      kPPos, kPVel, kIPos, kFFVel, kFFAccel
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 0,0, 1.0/140.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.07, 0,0, 1.0/140.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 0,0, 1.0/140.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.07, 0,0, 1.0/140.0, 0.0);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
