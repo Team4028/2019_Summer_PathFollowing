@@ -104,15 +104,15 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
      */
     //                                                      kPPos, kPVel, kIPos, kFFVel, kFFAccel
     private final static EncoderFollowerPIDGainsBE _leftFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.0, 0.07, 0,0, 1.0/140.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 0,0, 1.0/140.0, 0.0);
 
     private final static EncoderFollowerPIDGainsBE _rightFollowerGains 
-                            = new EncoderFollowerPIDGainsBE(0.0, 0.07, 0,0, 1.0/140.0, 0.0);
+                            = new EncoderFollowerPIDGainsBE(0.0, 0.0, 0,0, 1.0/140.0, 0.0);
 
     // This constant multiplies the effect of the heading 
     // compensation on the motor output (Original equation assumes
     // open loop [-1 - 1], so this compensates for closed loop)
-    private static final double KHErr = 0.0; //0.1; 
+    private static final double KHErr = 0.1; 
 
     // minimum motor command before we start to have some linear control
     // fyi .09 was minimum cmd to make chassis move 
@@ -252,8 +252,8 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             VelocityCmdAdjBE turnAdjustment = CalcTurnAdjustment2(headingError, _lastTurnAdjustment);
 
             // set turn adjustment amount (1 will be +, 1 will be -)
-            //leftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
-            //rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
+            leftMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.LeftMtrCmdTurnAdj);
+            rgtMtrCmd.set_mtrTurnAdjCmd(turnAdjustment.RgtMtrCmdTurnAdj);
 
             // enable mtr comd saturation scaling so output is not > 1 so turn adj still works
             leftMtrCmd.calcMtrScaleFactor(rgtMtrCmd.get_RawFinalMtrCmd());
@@ -391,7 +391,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             logData.AddData("LeftFollower:VInterceptCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.MtrKIntereptCmd, 3)));
             logData.AddData("LeftFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("LeftFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_AdjBaseMtrCmd(), 3)));
-            //logData.AddData("LeftFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_mtrTurnAdjCmd(), 3)));
+            logData.AddData("LeftFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_mtrTurnAdjCmd(), 3)));
             logData.AddData("LeftFollower:RawFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_RawFinalMtrCmd(), 3)));
             logData.AddData("LeftFollower:ScaledFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastLeftMtrCmd.get_ScaledFinalMtrCmd(), 3)));
 
@@ -436,7 +436,7 @@ public class DriveFollowPathOpenLoopV3 extends Command implements IBeakSquadData
             logData.AddData("RgtFollower:VInterceptCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.MtrKIntereptCmd, 3)));
             logData.AddData("RgtFollower:RawBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawBaseMtrCmd(), 3)));
             logData.AddData("RgtFollower:AdjBaseMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_AdjBaseMtrCmd(), 3)));
-            //logData.AddData("RgtFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_mtrTurnAdjCmd(), 3)));
+            logData.AddData("RgtFollower:TurnAdj", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_mtrTurnAdjCmd(), 3)));
             logData.AddData("RgtFollower:RawFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_RawFinalMtrCmd(), 3)));
             logData.AddData("RgtFollower:ScaledFinalMtrCmd", Double.toString(GeneralUtilities.roundDouble(_lastRgtMtrCmd.get_ScaledFinalMtrCmd(), 3)));
 

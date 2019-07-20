@@ -21,7 +21,7 @@ public class VelocityCmdBE {
     public final double MtrKFFAccelCmd;
     public final double MtrKIntereptCmd;
 
-    //private double _mtrTurnAdjCmd;
+    private double _mtrTurnAdjCmd;
     private double _otherChassisSideRawFinalMtrCmd; // to support saturation scal
 
     public final double PositionErrorInInches;
@@ -56,13 +56,13 @@ public class VelocityCmdBE {
         this.CurrentSegment = currentSegment;
     }
 
-    //public void set_mtrTurnAdjCmd(double mtrTurnAdjCmd) {
-    //    _mtrTurnAdjCmd = mtrTurnAdjCmd;
-    //}
+    public void set_mtrTurnAdjCmd(double mtrTurnAdjCmd) {
+        _mtrTurnAdjCmd = mtrTurnAdjCmd;
+    }
 
-    //public double get_mtrTurnAdjCmd() {
-    //    return _mtrTurnAdjCmd;
-    //}
+    public double get_mtrTurnAdjCmd() {
+        return _mtrTurnAdjCmd;
+    }
 
     public double get_RawBaseMtrCmd() {
         double baseMtrCmd = MtrKPPosCmd + MtrKIPosCmd + MtrKPVelCmd + MtrKFFVelCmd + MtrKFFAccelCmd;
@@ -77,7 +77,7 @@ public class VelocityCmdBE {
     }
 
     public double get_RawFinalMtrCmd() {
-        return (get_AdjBaseMtrCmd()); // + get_mtrTurnAdjCmd());
+        return (get_AdjBaseMtrCmd() + get_mtrTurnAdjCmd());
     }
 
     public double get_ScaledFinalMtrCmd() {
